@@ -1,5 +1,8 @@
 package com.lightning.walletapp.lnutils
 
+import org.bitcoinj.script.{Script => JScript}
+import fr.acinq.bitcoin.{Transaction => STransaction}
+import org.bitcoinj.core.{Transaction => JTransaction}
 import android.graphics.drawable.BitmapDrawable
 import com.lightning.walletapp.Utils.app
 import language.implicitConversions
@@ -13,16 +16,12 @@ object ImplicitConversions {
     def html = Html.fromHtml(source, IconGetter, null)
     def s2hex = ByteVector.view(source getBytes "UTF-8").toHex
     def noSpaces = source.replace(" ", "").replace("\u00A0", "")
+    def noInjection = source.replaceAll("[^ a-zA-Z0-9]", "")
   }
 
-  implicit def bitcoinLibScript2bitcoinjScript(pubKeyScript: ByteVector): org.bitcoinj.script.Script =
-    new org.bitcoinj.script.Script(pubKeyScript.toArray, System.currentTimeMillis / 1000L - 3600 * 24)
-
-  implicit def bitcoinjTx2bitcoinLibTx(bitcoinjTx: org.bitcoinj.core.Transaction): fr.acinq.bitcoin.Transaction =
-    fr.acinq.bitcoin.Transaction.read(bitcoinjTx.unsafeBitcoinSerialize)
-
-  implicit def bitcoinLibTx2bitcoinjTx(bitcoinLibTx: fr.acinq.bitcoin.Transaction): org.bitcoinj.core.Transaction =
-    new org.bitcoinj.core.Transaction(app.params, bitcoinLibTx.bin.toArray)
+  implicit def bitcoinLibScript2bitcoinjScript(script: ByteVector): JScript = new JScript(script.toArray, System.currentTimeMillis / 1000L - 3600 * 24)
+  implicit def bitcoinjTx2bitcoinLibTx(tx: JTransaction): STransaction = STransaction.read(tx.unsafeBitcoinSerialize)
+  implicit def bitcoinLibTx2bitcoinjTx(tx: STransaction): JTransaction = new JTransaction(app.params, tx.bin.toArray)
 }
 
 object IconGetter extends Html.ImageGetter {

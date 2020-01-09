@@ -10,7 +10,6 @@ import com.lightning.walletapp.lnutils.JsonHttpUtils._
 import com.lightning.walletapp.lnutils.ImplicitConversions._
 import com.lightning.walletapp.lnutils.ImplicitJsonFormats._
 
-import rx.lang.scala.{Observable => Obs}
 import com.lightning.walletapp.helper.{AES, RichCursor}
 import fr.acinq.bitcoin.{Crypto, MilliSatoshi, Transaction}
 import com.lightning.walletapp.lnutils.olympus.{CerberusAct, OlympusWrap}
@@ -30,98 +29,80 @@ object PaymentInfoWrap extends PaymentInfoBag with ChannelListener { me =>
   var newRoutesOrGiveUp: RoutingData => Unit = _
   var failOnUI: RoutingData => Unit = _
 
-  def addPendingPayment(rd: RoutingData) = {
-    // Add payment to unsentPayments and try to resolve it later
-    unsentPayments = unsentPayments.updated(rd.pr.paymentHash, rd)
-    me insertOrUpdateOutgoingPayment rd
-    resolvePending
-    uiNotify
-  }
-
-  def resolvePending =
-    if (ChannelManager.currentBlocksLeft.isDefined)
-      // When uncapable chan becomes online: persists, waits for capable channel
-      // When no routes found or any other error happens: gets removed in failOnUI
-      // When accepted by channel: gets removed in outPaymentAccepted
-      unsentPayments.values foreach fetchAndSend
-
   def extractPreimage(candidateTx: Transaction) = {
     val fulfills = candidateTx.txIn.map(_.witness.stack) collect {
-      case Seq(_, pre, _) if pre.size == 32 => UpdateFulfillHtlc(NOCHANID, 0L, pre)
-      case Seq(_, _, _, pre, _) if pre.size == 32 => UpdateFulfillHtlc(NOCHANID, 0L, pre)
+      case Seq(_, pre, _) if pre.size == 32 => UpdateFulfillHtlc(ByteVector.empty, 0L, pre)
+      case Seq(_, _, _, pre, _) if pre.size == 32 => UpdateFulfillHtlc(ByteVector.empty, 0L, pre)
     }
 
     fulfills foreach updOkOutgoing
     if (fulfills.nonEmpty) uiNotify
   }
 
-  def fetchAndSend(rd: RoutingData) = ChannelManager.fetchRoutes(rd).foreach(ChannelManager.sendEither(_, failOnUI), anyError => me failOnUI rd)
-  def updOkIncoming(m: UpdateAddHtlc) = db.change(PaymentTable.updOkIncomingSql, m.amountMsat, System.currentTimeMillis, m.channelId, m.paymentHash)
-  def updOkOutgoing(m: UpdateFulfillHtlc) = db.change(PaymentTable.updOkOutgoingSql, m.paymentPreimage, m.channelId, m.paymentHash)
-  def getPaymentInfo(hash: ByteVector) = RichCursor apply db.select(PaymentTable.selectSql, hash) headTry toPaymentInfo
-  def updStatus(status: Int, hash: ByteVector) = db.change(PaymentTable.updStatusSql, status, hash)
+  protected def doUpdOkIncoming(upd: UpdateAddHtlc) = db.change(PaymentTable.updOkIncomingSql, upd.amountMsat, System.currentTimeMillis, upd.paymentHash) // TODO: WRONG, need a compound amount here
+  protected def doUpdOkOutgoing(upd: UpdateFulfillHtlc) = db.change(PaymentTable.updOkOutgoingSql, upd.paymentPreimage, upd.paymentHash)
+  protected def doUpdStatus(status: Int, hash: ByteVector) = db.change(PaymentTable.updStatusSql, status, hash)
+
+  protected def doGetPaymentInfo(hash: ByteVector) = {
+    val paymentCursor = db.select(PaymentTable.selectSql, hash)
+    RichCursor(paymentCursor).headTry(toPaymentInfo).toOption
+  }
+
+  protected def doUpdatePendingOutgoing(rd: RoutingData) = db txWrap {
+    // firstMsat also gets updated because we may attempt a second try with different amount
+    db.change(PaymentTable.updLastParamsOutgoingSql, rd.firstMsat, rd.lastMsat, rd.pr.paymentHash)
+    db.change(PaymentTable.newSql, rd.pr.toJson, NOIMAGE, 0 /* outgoing */, WAITING, System.currentTimeMillis,
+      PaymentDescription(rd.action, rd.pr.description).toJson, rd.pr.paymentHash, rd.firstMsat, rd.lastMsat)
+  }
+
+  def addPendingPayment(rd: RoutingData) = {
+    // Add payment to unsentPayments and try to resolve it later
+    unsentPayments = unsentPayments.updated(rd.pr.paymentHash, rd)
+    updatePendingOutgoing(rd)
+    resolvePending
+    uiNotify
+  }
+
+  def resolvePending = {
+    // When accepted by channel: gets removed in outPaymentAccepted
+    // When uncapable chan becomes online: persists, waits for capable channel
+    // When no routes found or any other error happens: gets removed from map in failOnUI
+    if (ChannelManager.currentBlocksLeft.isDefined) unsentPayments.values foreach fetchAndSend
+  }
+
   def uiNotify = app.getContentResolver.notifyChange(db sqlPath PaymentTable.table, null)
+  def fetchAndSend(rd: RoutingData) = ChannelManager.fetchRoutes(rd).foreach(ChannelManager.sendEither(_, failOnUI), _ => me failOnUI rd)
+  def byQuery(mayHaveInjectionQuery: String) = db.select(PaymentTable.searchSql, s"${mayHaveInjectionQuery.noInjection}*")
   def byRecent = db select PaymentTable.selectRecentSql
 
-  def byQuery(rawQuery: String) = {
-    val refinedQuery = rawQuery.replaceAll("[^ a-zA-Z0-9]", "")
-    db.select(PaymentTable.searchSql, s"$refinedQuery*")
-  }
-
-  def toPaymentInfo(rc: RichCursor) =
-    PaymentInfo(rawPr = rc string PaymentTable.pr, hash = rc string PaymentTable.hash, preimage = rc string PaymentTable.preimage,
-      incoming = rc int PaymentTable.incoming, status = rc int PaymentTable.status, stamp = rc long PaymentTable.stamp,
-      description = rc string PaymentTable.description, firstMsat = rc long PaymentTable.firstMsat,
-      lastMsat = rc long PaymentTable.lastMsat, lastExpiry = rc long PaymentTable.lastExpiry)
-
-  def insertOrUpdateOutgoingPayment(rd: RoutingData) = db txWrap {
-    db.change(PaymentTable.updLastParamsOutgoingSql, rd.firstMsat, rd.lastMsat, rd.lastExpiry, rd.pr.paymentHash)
-    db.change(PaymentTable.newSql, rd.pr.toJson, NOIMAGE, 0 /* outgoing payment */, WAITING, System.currentTimeMillis,
-      PaymentDescription(rd.action, rd.pr.description).toJson, rd.pr.paymentHash, rd.firstMsat, rd.lastMsat,
-      rd.lastExpiry, NOCHANID)
-  }
+  def toPaymentInfo(rc: RichCursor) = PaymentInfo(rawPr = rc string PaymentTable.pr, hash = rc string PaymentTable.hash,
+    preimage = rc string PaymentTable.preimage, incoming = rc int PaymentTable.incoming, status = rc int PaymentTable.status,
+    stamp = rc long PaymentTable.stamp, description = rc string PaymentTable.description, firstMsat = rc long PaymentTable.firstMsat,
+    lastMsat = rc long PaymentTable.lastMsat)
 
   def recordRoutingDataWithPr(extraRoutes: Vector[PaymentRoute], amount: MilliSatoshi, preimage: ByteVector, description: String): RoutingData = {
     val pr = PaymentRequest(chainHash, Some(amount), Crypto sha256 preimage, keys.extendedNodeKey.privateKey, description, fallbackAddress = None, extraRoutes)
-    val rd = app.emptyRD(pr, amount.toLong, useCache = true)
+    val rd = app.emptyRD(pr, amount.toLong)
 
     db.change(PaymentTable.newVirtualSql, rd.queryText, pr.paymentHash)
-    db.change(PaymentTable.newSql, pr.toJson, preimage, 1 /* incoming payment */, WAITING, System.currentTimeMillis,
-      PaymentDescription(None, description).toJson, pr.paymentHash, amount.toLong, 0L /* lastMsat with fees */,
-      0L /* lastExpiry, may later be updated for reflexive payments */, NOCHANID)
+    db.change(PaymentTable.newSql, pr.toJson, preimage, 1 /* incoming */, WAITING,
+      System.currentTimeMillis, PaymentDescription(None, description).toJson, pr.paymentHash, amount.toLong,
+      0L) // -> lastMsat with routing fees, may later be updated if this payment becomes a reflexive one
 
     uiNotify
     rd
   }
 
-  def markFailedPayments = db txWrap {
-    db.change(PaymentTable.updFailWaitingSql, System.currentTimeMillis - PaymentRequest.expiryTag.seconds * 1000L)
-    for (activeInFlightHash <- ChannelManager.activeInFlightHashes) updStatus(WAITING, activeInFlightHash)
-  }
-
-  override def unknownHostedHtlcsDetected(hc: HostedCommits) = {
-    // Hosted peer is far ahead, we can't know what happened to in-flight payments
-    for (htlc <- hc.currentAndNextInFlight) updStatus(FROZEN, htlc.add.paymentHash)
-    // Don't enclose this in a transaction becuase we notify UI right away
-    uiNotify
-  }
-
   override def outPaymentAccepted(rd: RoutingData) = {
     acceptedPayments = acceptedPayments.updated(rd.pr.paymentHash, rd)
     unsentPayments = unsentPayments - rd.pr.paymentHash
-    // Update once again with actual fees data
-    me insertOrUpdateOutgoingPayment rd
+    updatePendingOutgoing(rd)
   }
 
   override def fulfillReceived(ok: UpdateFulfillHtlc) = db txWrap {
-    // Save preimage right away, don't wait for their next commitSig
-    me updOkOutgoing ok
-
-    acceptedPayments get ok.paymentHash foreach { rd =>
-      val isFeeLow = !isFeeBreach(rd.usedRoute, 1000000000L, percent = 500L)
-      db.change(PaymentTable.newVirtualSql, rd.queryText, rd.pr.paymentHash)
-      if (rd.usedRoute.nonEmpty && isFeeLow) RouteWrap cacheSubRoutes rd
-    }
+    // Do not wait for their next CommitSig and save a preimage right away, also make this payment searchable
+    for (rd <- acceptedPayments get ok.paymentHash) db.change(PaymentTable.newVirtualSql, rd.queryText, rd.pr.paymentHash)
+    updOkOutgoing(ok)
   }
 
   override def onSettled(cs: Commitments) = {
@@ -156,7 +137,6 @@ object PaymentInfoWrap extends PaymentInfoBag with ChannelListener { me =>
     }
 
     if (cs.localSpec.fulfilled.nonEmpty) {
-      com.lightning.walletapp.Vibrator.vibrate
       // This could be a memo-resolving payment
       olympusWrap tellClouds OlympusWrap.CMDStart
     }
@@ -234,7 +214,7 @@ object ChannelWrap {
   }
 
   def put(data: ChannelData) = data match {
-    case refund: RefundingData if refund.remoteLatestPoint.isEmpty => Tools log "skipping empty refund"
+    case refund: RefundingData if refund.remoteLatestPoint.isEmpty => // Skipping empty refund
     case hasNorm: HasNormalCommits => doPut(hasNorm.commitments.channelId, '1' + hasNorm.toJson.toString)
     case hostedCommits: HostedCommits => doPut(hostedCommits.channelId, '2' + hostedCommits.toJson.toString)
     case otherwise => throw new RuntimeException(s"Can not presist this channel data type: $otherwise")
@@ -246,34 +226,6 @@ object ChannelWrap {
       case rawChanData if '2' == rawChanData.head => to[HostedCommits](rawChanData substring 1)
       case otherwise => throw new RuntimeException(s"Can not deserialize: $otherwise")
     }
-}
-
-object RouteWrap {
-  def cacheSubRoutes(rd: RoutingData) = {
-    // This will only work if we have at least one hop: must check if route vector is empty!
-    // then merge each of generated subroutes with a respected routing node or recipient node key
-    val subs = (rd.usedRoute drop 1).scanLeft(rd.usedRoute take 1) { case rs \ hop => rs :+ hop }
-
-    for (_ \ node \ path <- rd.onion.sharedSecrets drop 1 zip subs) {
-      val pathJson \ nodeString = path.toJson.toString -> node.toString
-      db.change(RouteTable.newSql, pathJson, nodeString)
-      db.change(RouteTable.updSql, pathJson, nodeString)
-    }
-  }
-
-  def findRoutes(from: PublicKeyVec, targetId: PublicKey, rd: RoutingData) = {
-    // Cached routes never expire, but local channels might be closed or excluded
-    // so make sure we still have a matching channel for retrieved cached route
-
-    val cursor = db.select(RouteTable.selectSql, targetId)
-    val routeTry = RichCursor(cursor).headTry(_ string RouteTable.path) map to[PaymentRoute]
-    val validRouteTry = for (rt <- routeTry if from contains rt.head.nodeId) yield Obs just Vector(rt)
-
-    db.change(RouteTable.killSql, targetId)
-    // Remove cached route in case if it starts hanging our payments
-    // this route will be put back again if payment was a successful one
-    validRouteTry getOrElse BadEntityWrap.findRoutes(from, targetId, rd)
-  }
 }
 
 object BadEntityWrap {
@@ -289,8 +241,7 @@ object BadEntityWrap {
 
     val targetStr = targetId.toString
     val fromAsStr = from.map(_.toString).toSet
-    val finalBadNodes = badNodes - targetStr -- fromAsStr // Remove source and sink nodes because they may have been blacklisted earlier
-    val finalBadChans = badChans.map(_.toLong) ++ rd.expensiveScids // Add not yet blacklisted but overly expensive shortChannelIds
-    olympusWrap findRoutes OutRequest(rd.firstMsat / 1000L, finalBadNodes, finalBadChans, fromAsStr, targetStr)
+    val finalBadNodes = badNodes - targetStr -- fromAsStr // Remove source and sink nodes because they could be blacklisted earlier
+    olympusWrap findRoutes OutRequest(rd.firstMsat / 1000L, finalBadNodes, badChans.map(_.toLong), fromAsStr, targetStr)
   }
 }

@@ -78,13 +78,11 @@
     <string name="amount_hint_can_send"><![CDATA[<br><small>can send %1$s</small>]]></string>
     <string name="dialog_olympus_recovering">Getting Olympus backups&#8230;</string>
     <string name="dialog_hosted_draining">Draining has started&#8230;</string>
-    <string name="dialog_pr_expired">Этот платежный запрос устарел</string>
     <string name="dialog_sum_small">Сумма слишком мала</string>
     <string name="dialog_sum_big">Сумма слишком велика</string>
     <string name="dialog_pay_onchain">On-chain</string>
     <string name="dialog_close">Закрыть</string>
     <string name="dialog_cancel">Отмена</string>
-    <string name="dialog_retry">Еще раз</string>
     <string name="dialog_share">Share</string>
     <string name="dialog_login">Войти</string>
     <string name="dialog_boost">CPFP</string>
@@ -106,12 +104,6 @@
     <string name="sets_trusted_title"><![CDATA[Свой Биткоин-узел<br><br><small>Если адрес указан, то кошелек будет использовать только ваш Биткоин-узел, а не случайные из сети</small>]]></string>
     <string name="sets_trusted">Свой Биткоин-узел</string>
 
-    <!-- ln fee cap -->
-    <string name="sets_ln_fee_cap">Ограничить размер LN-комиссий</string>
-    <string name="ln_fee_cap_disabled"><![CDATA[Отключено, максимальная LN-комиссия равна <strong>%1$s</strong> от суммы платежа]]></string>
-    <string name="ln_fee_cap_enabled"><![CDATA[Включено, максимальная LN-комиссия равна <strong>%1$s</strong> от суммы платежа, но не выше чем текущая ончейн комиссия <strong>%2$s</strong>]]></string>
-    <string name="ln_fee_expensive_omitted">Дорогие маршруты не использовались: уберите ограничение на LN-комиссию в настройках чтобы попробовать более дорогие маршруты</string>
-
     <!-- local backups -->
     <string name="sets_backups">Локальный бекап каналов</string>
     <string name="ln_backup_detected">Есть файл с бекапом каналов</string>
@@ -127,7 +119,7 @@
     <string name="ln_incoming_title"><![CDATA[<font color=#0099FE><strong>Платеж-Молния</strong></font><br>%1$s<br><br>входящий %2$s<br><small>%3$s по текущему курсу</small>]]></string>
     <string name="ln_outgoing_title_no_fee"><![CDATA[<font color=#0099FE><strong>Платеж-Молния</strong></font><br>%1$s<br><br>исходящий %2$s<br><small>%3$s по текущему курсу</small>]]></string>
     <string name="ln_outgoing_title"><![CDATA[<font color=#0099FE><strong>Платеж-Молния</strong></font><br>%1$s<br><br>исходящий %2$s<br><small>%3$s по текущему курсу</small><br>комса %4$s = %5$.2f%%]]></string>
-    <string name="ln_hosted_preimage_revealed"><![CDATA[<i>секрет этого платежа раскрыт, свяжитесь с провайдером hosted-канала <strong>до окончания</strong> блоков если платеж продолжит висеть</i>]]></string>
+    <string name="ln_hosted_preimage_revealed"><![CDATA[<i>секрет этого платежа раскрыт, но сумма еще не зачислена: свяжитесь с провайдером hosted-канала если ситуация не изменится в течении пары часов</i>]]></string>
 
     <string name="btc_incoming_title"><![CDATA[<font color=#E68A00><strong>Биткоин-транзакция</strong></font><br>%1$s<br><br>входящий %2$s<br><small>%3$s по текущему курсу</small>]]></string>
     <string name="btc_outgoing_title_no_fee"><![CDATA[<font color=#E68A00><strong>Биткоин-транзакция</strong></font><br>%1$s<br><br>исходящий %2$s<br><small>%3$s по текущему курсу</small>]]></string>
@@ -156,12 +148,11 @@
 
     <string name="ln_receive_howto"><![CDATA[
         Для получения платежей-Молний нужно иметь как минимум один <a href=https://lightning-wallet.com/using-lightning-wallet#payment-channel>платежный канал</a>. Открыть канал можно двумя способами:<br><br>
-        - Откройте <i>исходящий канал</i> с выбранным вами пиром и сначала сделайте несколько платежей-Молний чтобы <a href=https://lightning-wallet.com/using-lightning-wallet#receiving-lightning-funds>освободить место</a> для входящих средств.<br><br>
-        - <a href=https://www.bitrefill.com/thor-lightning-network-channels>Закажите</a> <i>входящий канал</i> от сервиса Bitrefill.<br><br>
-        - <a href=https://lnbig.com/#/open-channel/>Получите бесплатный входящий канал</a> от сервиса LNBIG.COM.
+        1. Откройте <i>исходящий канал</i> с выбранным вами пиром и сначала сделайте несколько платежей-Молний чтобы <a href=https://lightning-wallet.com/using-lightning-wallet#receiving-lightning-funds>освободить место</a> для входящих средств.<br><br>
+        2. <a href=https://www.bitrefill.com/thor-lightning-network-channels>Закажите</a> <i>входящий канал</i>, который сразу же позволит вам получать платежи-Молнии.
     ]]></string>
 
-    <string name="ln_receive_6conf"><![CDATA[&#9888; Входящие платежи-Молнии пока невозможны потому что ваш пир еще не готов. Как правило пиры становятся готовы как только наполняющая канал Биткоин-транзакция получает 6 подтверждений]]></string>
+    <string name="ln_receive_6_confs"><![CDATA[&#9888; Входящие платежи-Молнии пока невозможны потому что ваш пир еще не готов. Как правило пиры становятся готовы как только наполняющая канал Биткоин-транзакция получает 6 подтверждений]]></string>
     <string name="ln_receive_reserve"><![CDATA[&#9888; Входящие платежи-Молнии пока невозможны потому что для начала вам нужно потратить хотя-бы %1$s чтобы освободить место для получения денег]]></string>
     <string name="ln_receive_suggestion"><![CDATA[&#9888; Входящие платежи-Молнии невозможны: нет каналов.<br>Нажмите, чтобы узнать больше!]]></string>
     <string name="ln_receive_ok">Cоздать QR-код с одноразовым запросом для получения быстрых оффчейн-платежей</string>
@@ -169,7 +160,7 @@
     <string name="btc_receive_option"><![CDATA[<font color=#E68A00>Биткоин-транзакция</font><small><br><br>создать QR-код с обычным адресом для получения ончейн Биткоин-транзакций</small>]]></string>
 
     <string name="err_ln_peer_offline">Не удалось подключиться к %1$s</string>
-    <string name="err_ln_peer_incompatible">%1$s не поддерживает защиту от потери данных</string>
+    <string name="err_ln_peer_incompatible">%1$s несовместим с этим кошельком</string>
     <string name="err_ln_chan_exists_already">У вас уже есть открытый канал с этим пиром, попробуйте открыть канал с другим узлом</string>
     <string name="err_ln_local_fee_high">Не получилось потому что после добавления комиссии сумма платежа стает слишком высокой для канала</string>
     <string name="err_ln_remote_fee_high">Не получилось потому что после добавления комиссии сумма платежа стает слишком высокой для вашего пира</string>
@@ -184,6 +175,8 @@
     <string name="err_ln_peer_can_not_route">Пир временно не может передавать платежи, попробуйте еще раз позже или откройте другой канал</string>
     <string name="err_empty_shrunk">Не получилось потому что не удалось подобрать нужную сумму комиссии, вы можете добавить денег в кошелек и попробовать еше раз</string>
     <string name="err_tx_too_large">Не получилось потому что размер транзакции слишком большой, попробуйте разбить ее на несколько более мелких транзакций</string>
+    <string name="err_pr_unsupported">Этот платежный запрос не поддерживается</string>
+    <string name="err_pr_expired">Этот платежный запрос устарел</string>
     <string name="err_nothing_useful">Ничего не найдено</string>
 
     <string name="err_not_enough_funds"><![CDATA[
@@ -208,10 +201,7 @@
     <string name="ln_state_success">успешно оплачен</string>
     <string name="ln_state_fail_out">возвращен назад</string>
     <string name="ln_state_fail_in">срок годности истек</string>
-    <string name="ln_state_unknown">состояние неизвестно</string>
 
-    <string name="ln_info_total_payments">total payments</string>
-    <string name="ln_info_in_flight">value in-flight</string>
     <string name="ln_info_can_receive">can receive</string>
     <string name="ln_info_refundable">refundable</string>
     <string name="ln_info_depth">funding depth</string>
@@ -240,7 +230,6 @@
     <string name="ln_info_status_shutdown"><![CDATA[<font color=#E68A00>ЗАКРЫВАЕТСЯ</font>]]></string>
     <string name="ln_info_status_negotiations"><![CDATA[<font color=#E68A00>ПЕРЕГОВОРЫ</font>]]></string>
     <string name="ln_info_status_suspended"><![CDATA[<font color=#E68A00>ЗАМОРОЖЕН</font>]]></string>
-    <string name="ln_info_status_other"><![CDATA[<font color=#777777>%1$s</font>]]></string>
 
     <string name="ln_chan_close_inflight_details"><![CDATA[<small><br></small>&#9888; <font color=#E68A00>В канале есть активные платежи</font> поэтому кооперативное закрытие будет отложено пока они не исчезнут.<br><br>Рекомендуется не закрывать канал прямо сейчас, а вместо этого дать платежам пройти, все еще хотите продолжить?]]></string>
     <string name="ln_chan_force_details"><![CDATA[<small><br></small>&#9888; Учтите, что попытка закрытия канала прямо сейчас приведет к <a href=http://lightning-wallet.com/using-lightning-wallet#forced-channel-closure>форсированному закрытию</a>, на которое уйдет большая сумма комиссии и больше времени, все еще хотите продолжить?]]></string>
@@ -264,7 +253,7 @@
     <array name="ln_hosted_chan_actions">
         <item><![CDATA[About hosted channels]]></item>
         <item><![CDATA[Export channel state]]></item>
-        <item><![CDATA[Remove this channel]]></item>
+        <item><![CDATA[Remove channel]]></item>
     </array>
 
     <string name="btc_empty"><![CDATA[<font color=#BBBBBB>Нет монет на цепи</font>]]></string>
@@ -281,13 +270,6 @@
         <item><![CDATA[Всего %1$s канал]]></item>
         <item><![CDATA[Всего %1$s канала]]></item>
         <item><![CDATA[Всего %1$s каналов]]></item>
-    </array>
-
-    <array name="ln_status_expiry">
-        <item><![CDATA[застрявший платеж]]></item>
-        <item><![CDATA[остался %1$s блок]]></item>
-        <item><![CDATA[осталось %1$s блока]]></item>
-        <item><![CDATA[осталось %1$s блоков]]></item>
     </array>
 
     <array name="ln_chan_connecting">

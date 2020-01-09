@@ -46,8 +46,8 @@ object Utils {
   var denom: Denomination = _
   var fiatCode: String = _
 
-  final val fileName = "SegwitMainnet"
-  final val dbFileName = s"$fileName.db"
+  final val fileName = "SegwitTestnet4"
+  final val dbFileName = s"${fileName}a.db"
   final val walletFileName = s"$fileName.wallet"
   final val chainFileName = s"$fileName.spvchain"
   lazy val denoms = List(SatDenomination, BtcDenomination)
@@ -90,12 +90,12 @@ trait TimerActivity extends AppCompatActivity { me =>
   val timer = new Timer
   val goTo: Class[_] => Any = target => {
     me startActivity new Intent(this, target)
-    app.TransData.DoNotEraseValue
+    app.TransData.RetainValue
   }
 
   val exitTo: Class[_] => Any = target => {
     me startActivity new Intent(this, target)
-    runAnd(app.TransData.DoNotEraseValue)(finish)
+    runAnd(app.TransData.RetainValue)(finish)
   }
 
   def rm(prev: Dialog)(exe: => Unit) = {

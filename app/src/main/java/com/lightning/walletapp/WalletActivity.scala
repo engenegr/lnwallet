@@ -18,7 +18,6 @@ import org.bitcoinj.core.{Block, FilteredBlock, Peer}
 import com.lightning.walletapp.lnutils.JsonHttpUtils.{queue, to}
 import com.lightning.walletapp.lnutils.IconGetter.{bigFont, scrWidth}
 import com.lightning.walletapp.lnutils.{LocalBackup, PaymentInfoWrap}
-import com.lightning.walletapp.ln.crypto.Sphinx.DecryptedFailurePacket
 import io.github.douglasjunior.androidSimpleTooltip.SimpleTooltip
 import android.support.v4.app.FragmentStatePagerAdapter
 import org.ndeftools.util.activity.NfcReaderActivity
@@ -141,8 +140,8 @@ class WalletActivity extends NfcReaderActivity with ScanActivity { me =>
 
         lazy val hostedChanOpenListener = new ConnectionListener with ChannelListener {
           override def onDisconnect(nodeId: PublicKey) = if (nodeId == FragLNStart.defaultHostedNode.ann.nodeId) detachAll(retryOnRestart = true)
-          override def onOperational(nodeId: PublicKey, isCompat: Boolean) = if (nodeId == FragLNStart.defaultHostedNode.ann.nodeId && isCompat) freshChannel.startUp
-          override def onHostedMessage(ann: NodeAnnouncement, message: HostedChannelMessage) = if (ann.nodeId == FragLNStart.defaultHostedNode.ann.nodeId) freshChannel process message
+          override def onOperational(nodeId: PublicKey, isCompat: Boolean) = if (nodeId == FragLNStart.defaultHostedNode.ann.nodeId && isCompat) freshChannel.process(CMDChainTipKnown, CMDSocketOnline)
+          override def onHostedMessage(ann: NodeAnnouncement, hostedMessage: HostedChannelMessage) = if (ann.nodeId == FragLNStart.defaultHostedNode.ann.nodeId) freshChannel process hostedMessage
 
           override def onMessage(nodeId: PublicKey, message: LightningMessage) = message match {
             case upd: ChannelUpdate if nodeId == FragLNStart.defaultHostedNode.ann.nodeId && upd.isHosted => freshChannel process upd
@@ -201,28 +200,16 @@ class WalletActivity extends NfcReaderActivity with ScanActivity { me =>
     me setContentView R.layout.activity_double_pager
     walletPager setAdapter slidingFragmentAdapter
 
-    PaymentInfoWrap.newRoutesOrGiveUp = rd =>
-      if (rd.callsLeft > 0 && ChannelManager.checkIfSendable(rd).isRight) {
-        // We do not care about options such as AIR or AMP here, this HTLC may be one of them
-        PaymentInfoWrap fetchAndSend rd.copy(callsLeft = rd.callsLeft - 1, useCache = false)
-      } else {
-        // Our direct peers likely have no liquidity at the moment
-        val allChanFailsFromPeers = PaymentInfo.errors(rd.pr.paymentHash) forall {
-          // Ensure failed route is not like A -> B [peer] -> C because peer may send temp failure for these but it could be C's fault
-          case DecryptedFailurePacket(origin, _: TemporaryChannelFailure) \ route => route.size > 1 && origin == rd.nextNodeId(route)
-          case DecryptedFailurePacket(origin, PermanentChannelFailure) \ route => route.size > 1 && origin == rd.nextNodeId(route)
-          case _ => false
-        }
-
-        if (allChanFailsFromPeers) UITask(me toast err_ln_peer_can_not_route).run
-        // Too many attempts and still no luck so we give up on payment for now
-        PaymentInfoWrap.updStatus(PaymentInfo.FAILURE, rd.pr.paymentHash)
-      }
+    PaymentInfoWrap.newRoutesOrGiveUp = rd => {
+      // TODO: re-enable err_ln_peer_can_not_route once MPP sending is implemented
+      val canProceed = rd.callsLeft > 0 && ChannelManager.checkIfSendable(rd).isRight
+      if (canProceed) PaymentInfoWrap fetchAndSend rd.copy(callsLeft = rd.callsLeft - 1)
+      else PaymentInfoWrap.updStatus(PaymentInfo.FAILURE, rd.pr.paymentHash)
+    }
 
     PaymentInfoWrap.failOnUI = rd => {
       PaymentInfoWrap.unsentPayments -= rd.pr.paymentHash
       PaymentInfoWrap.updStatus(PaymentInfo.FAILURE, rd.pr.paymentHash)
-      if (rd.expensiveScids.nonEmpty) UITask(me toast ln_fee_expensive_omitted).run
       PaymentInfoWrap.uiNotify
     }
 
@@ -264,7 +251,8 @@ class WalletActivity extends NfcReaderActivity with ScanActivity { me =>
     case pr: PaymentRequest =>
       val ourNetPrefix = PaymentRequest.prefixes(LNParams.chainHash)
       if (ourNetPrefix != pr.prefix) app quickToast err_nothing_useful
-      else if (!pr.isFresh) app quickToast dialog_pr_expired
+      else if (!pr.features.allowMultiPart) app quickToast err_pr_unsupported
+      else if (!pr.isFresh) app quickToast err_pr_expired
       else FragWallet.worker.standardOffChainSend(pr)
       me returnToBase null
 
@@ -361,7 +349,7 @@ class WalletActivity extends NfcReaderActivity with ScanActivity { me =>
     val withRoutes = viableChannels.filter(isOperational).flatMap(channelAndHop).toMap
 
     // For now we a bounded to single largest channel
-    val receivables = withRoutes.keys.map(_.estCanReceiveMsat)
+    val receivables = withRoutes.keys.map(_.remoteUsableMsat)
     val largestOne = if (receivables.isEmpty) 0L else receivables.max
     val maxCanReceive = MilliSatoshi(largestOne)
 
@@ -375,9 +363,9 @@ class WalletActivity extends NfcReaderActivity with ScanActivity { me =>
         val finalMaxCanReceiveCapped = MilliSatoshi(wr.maxWithdrawable min maxCanReceive.amount)
 
         if (viableChannels.isEmpty) showForm(negTextBuilder(dialog_ok, getString(ln_receive_howto).html).create)
-        else if (withRoutes.isEmpty) showForm(negTextBuilder(dialog_ok, getString(ln_receive_6conf).html).create)
-        else if (maxCanReceive.amount < 0L) showForm(negTextBuilder(dialog_ok, reserveUnspentWarning.html).create)
-        else FragWallet.worker.receive(withRoutes, finalMaxCanReceiveCapped, wr.minCanReceive, title, wr.defaultDescription) { rd =>
+        else if (withRoutes.isEmpty) showForm(negTextBuilder(dialog_ok, getString(ln_receive_6_confs).html).create)
+        else if (maxCanReceive.toLong < 0L) showForm(alertDialog = negTextBuilder(dialog_ok, reserveUnspentWarning.html).create)
+        else FragWallet.worker.receive(withRoutes, finalMaxCanReceiveCapped, MilliSatoshi(wr.minCanReceive), title, wr.defaultDescription) { rd =>
           queue.map(_ => wr.requestWithdraw(lnUrl, rd.pr).body).map(LNUrl.guardResponse).foreach(none, onRequestFailed)
           def onRequestFailed(response: Throwable) = wrap(PaymentInfoWrap failOnUI rd)(me onFail response)
         }
@@ -385,7 +373,7 @@ class WalletActivity extends NfcReaderActivity with ScanActivity { me =>
       case None =>
         val alertLNHint =
           if (viableChannels.isEmpty) getString(ln_receive_suggestion)
-          else if (withRoutes.isEmpty) getString(ln_receive_6conf)
+          else if (withRoutes.isEmpty) getString(ln_receive_6_confs)
           else if (maxCanReceive.amount < 0L) reserveUnspentWarning
           else getString(ln_receive_ok)
 
@@ -395,7 +383,7 @@ class WalletActivity extends NfcReaderActivity with ScanActivity { me =>
 
         def offChain = rm(alert) {
           if (viableChannels.isEmpty) showForm(negTextBuilder(dialog_ok, app.getString(ln_receive_howto).html).create)
-          else FragWallet.worker.receive(withRoutes, maxCanReceive, MilliSatoshi(1L), app.getString(ln_receive_title).html, new String) { rd =>
+          else FragWallet.worker.receive(withRoutes, maxCanReceive, MilliSatoshi(LNParams.minPaymentMsat), app.getString(ln_receive_title).html, new String) { rd =>
             app.foregroundServiceIntent.putExtra(AwaitService.SHOW_AMOUNT, denom asString rd.pr.amount.get).setAction(AwaitService.SHOW_AMOUNT)
             ContextCompat.startForegroundService(app, app.foregroundServiceIntent)
             me PRQR rd.pr
@@ -420,8 +408,8 @@ class WalletActivity extends NfcReaderActivity with ScanActivity { me =>
     lst setOnItemClickListener onTap { case 0 => pastePaymentRequest case 1 => depositHivemind }
 
     def pastePaymentRequest = rm(alert) {
-      def mayResolve(rawBufferString: String) = <(app.TransData recordValue rawBufferString, onFail)(_ => checkTransData)
-      Try(app.getBufferUnsafe) match { case Success(rawData) => mayResolve(rawData) case _ => app quickToast err_nothing_useful }
+      def mayResolve(raw: String) = <(app.TransData recordValue raw, _ => me onFail s"${app getString err_nothing_useful}\n\n∨∨∨∨\n\n$raw")(_ => checkTransData)
+      Try(app.getBufferUnsafe) match { case Success(pastedBufferData) => mayResolve(pastedBufferData) case _ => app quickToast err_nothing_useful }
     }
 
     def depositHivemind = rm(alert) {

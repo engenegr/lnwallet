@@ -3,15 +3,16 @@ package com.lightning.walletapp.lnutils
 import spray.json._
 import scala.concurrent.duration._
 import com.lightning.walletapp.ln._
+import com.lightning.walletapp.ln.Channel._
 import com.lightning.walletapp.Denomination._
 import com.lightning.walletapp.lnutils.JsonHttpUtils._
 import com.lightning.walletapp.lnutils.ImplicitJsonFormats._
 import com.lightning.walletapp.lnutils.olympus.OlympusWrap._
-import rx.lang.scala.schedulers.{IOScheduler, ComputationScheduler}
-import rx.lang.scala.{Observable => Obs}
 
+import rx.lang.scala.{Observable => Obs}
+import rx.lang.scala.schedulers.{ComputationScheduler, IOScheduler}
+import com.lightning.walletapp.{AbstractKit, ChannelManager}
 import org.bitcoinj.core.Transaction.DEFAULT_TX_FEE
-import com.lightning.walletapp.AbstractKit
 import com.lightning.walletapp.Utils.app
 import org.bitcoinj.core.Coin
 import spray.json.JsonFormat
@@ -35,7 +36,7 @@ object JsonHttpUtils {
   def pickInc(errorOrUnit: Any, next: Int) = next.seconds
 }
 
-object RatesSaver {
+object RatesSaver extends ChannelListener {
   private[this] val raw = app.prefs.getString(AbstractKit.RATES_DATA, new String)
   var rates = Try(raw) map to[Rates] getOrElse Rates(Nil, Nil, Map.empty, 0L)
 
@@ -43,16 +44,18 @@ object RatesSaver {
     val sensibleThree = for (notZero <- newFee("3") +: rates.feesThree if notZero > 0) yield notZero
     val sensibleSix = for (notZero <- newFee("6") +: rates.feesSix if notZero > 0) yield notZero
     rates = Rates(sensibleSix take 2, sensibleThree take 2, newFiat, System.currentTimeMillis)
+    for (chan <- ChannelManager.all) chan process CMDFeerate(ChannelManager.perKwThreeSat)
     app.prefs.edit.putString(AbstractKit.RATES_DATA, rates.toJson.toString).commit
-    // Channels may become open sooner then we get updated fees
-    // so inform channels again once we get updated fees
-    LNParams.updateFeerate
   }
 
-  lazy val subscription =
-    // Can later be cancelled if don't want updates
-    initDelay(retry(LNParams.olympusWrap.getRates, pickInc, 3 to 4),
-      rates.stamp, 60 * 30 * 1000).subscribe(process, Tools.none)
+  override def onBecome = {
+    case (chan: NormalChannel, _, WAIT_FUNDING_DONE | SLEEPING, OPEN) =>
+      // We may get updated fees sooner than channels become open
+      chan process CMDFeerate(ChannelManager.perKwThreeSat)
+  }
+
+  initDelay(retry(LNParams.olympusWrap.getRates, pickInc, 3 to 4),
+    rates.stamp, 60 * 30 * 1000).subscribe(process, Tools.none)
 }
 
 // 2 items of memory to help eliminate possible fee spikes

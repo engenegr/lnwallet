@@ -13,7 +13,6 @@ import com.google.zxing.qrcode.QRCodeWriter
 import android.graphics.Bitmap.createBitmap
 import android.transition.TransitionManager
 import org.bitcoinj.core.Address
-import scodec.bits.ByteVector
 import android.view.View
 import android.os.Bundle
 
@@ -58,33 +57,28 @@ class RequestActivity extends TimerActivity { me =>
   lazy val topSize = getResources getDimensionPixelSize R.dimen.bitmap_top_size
   lazy val qrSize = getResources getDimensionPixelSize R.dimen.bitmap_qr_size
 
-  var whenDestroy: Runnable = new Runnable { def run = none }
-  override def onDestroy = wrap(super.onDestroy)(whenDestroy.run)
+  var whenActivityDestroyed: Runnable = new Runnable { def run = none }
+  override def onDestroy = wrap(super.onDestroy)(whenActivityDestroyed.run)
+  def INIT(s: Bundle) = if (app.isAlive) proceed else me exitTo classOf[MainActivity]
 
-  def INIT(state: Bundle) = if (app.isAlive) {
+  def proceed = {
     setContentView(R.layout.activity_qr_request)
-    // Snapshot hash here, data will be erased soon
-    val targetHash = app.TransData.value match {
-      case pr: PaymentRequest => pr.paymentHash
-      case _ => ByteVector.empty
-    }
-
-    val receivedListener = new ChannelListener {
-      override def onSettled(cs: Commitments) = for {
-        updateAddHtlc <- cs.localSpec.fulfilledIncoming
-        if updateAddHtlc.paymentHash == targetHash
-      } showPaid.run
-    }
 
     app.TransData checkAndMaybeErase {
-      case pr: PaymentRequest => showInfo(drawAll(denom.asString(pr.amount.get), getString(ln_qr_disposable).html), PaymentRequest.write(pr).toUpperCase)
-      case onChainAddress: Address => showInfo(drawBottom(Utils humanSix onChainAddress.toString), onChainAddress.toString)
-      case _ => finish
-    }
+      case paymentRequest: PaymentRequest =>
+        val lnPaidListener = new ChannelManagerListener { override def incomingReceived(amt: Long, info: PaymentInfo) = if (info.paymentHash == paymentRequest.paymentHash) showPaid.run }
+        showInfo(drawAll(denom.asString(paymentRequest.amount.get), getString(ln_qr_disposable).html), PaymentRequest.write(paymentRequest).toUpperCase)
+        whenActivityDestroyed = UITask(ChannelManager.listeners -= lnPaidListener)
+        ChannelManager.listeners += lnPaidListener
 
-    whenDestroy = UITask(ChannelManager detachListener receivedListener)
-    ChannelManager attachListener receivedListener
-  } else me exitTo classOf[MainActivity]
+      case onChainAddress: Address =>
+        val humanAddr = Utils humanSix onChainAddress.toString
+        showInfo(drawBottom(humanAddr), onChainAddress.toString)
+
+      case _ =>
+        finish
+    }
+  }
 
   def showPaid = UITask {
     TransitionManager beginDelayedTransition reqContainer
@@ -165,7 +159,7 @@ class RequestActivity extends TimerActivity { me =>
     out.close
 
     val savedFile = new File(paymentRequestFilePath, "qr.png")
-    val fileURI = FileProvider.getUriForFile(me, "com.lightning.walletapp", savedFile)
+    val fileURI = FileProvider.getUriForFile(me, "com.lightning.wallet", savedFile)
     val share = new Intent setAction Intent.ACTION_SEND setType "text/plain" addFlags Intent.FLAG_GRANT_READ_URI_PERMISSION
     share.putExtra(Intent.EXTRA_TEXT, bech32).putExtra(Intent.EXTRA_STREAM, fileURI).setDataAndType(fileURI, getContentResolver getType fileURI)
     me startActivity Intent.createChooser(share, "Choose an app")

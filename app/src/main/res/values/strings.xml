@@ -78,14 +78,12 @@
     <string name="amount_hint_can_send"><![CDATA[<br><small>can send %1$s</small>]]></string>
     <string name="dialog_olympus_recovering">Getting Olympus backups&#8230;</string>
     <string name="dialog_hosted_draining">Draining has started&#8230;</string>
-    <string name="dialog_pr_expired">Expired payment request</string>
     <string name="dialog_sum_small">Amount is too small</string>
     <string name="dialog_sum_big">Amount is too large</string>
     <string name="dialog_pay_onchain">On-chain</string>
     <string name="dialog_close">Close app</string>
     <string name="dialog_cancel">Cancel</string>
     <string name="dialog_share">Share</string>
-    <string name="dialog_retry">Retry</string>
     <string name="dialog_login">Login</string>
     <string name="dialog_boost">CPFP</string>
     <string name="dialog_next">Next</string>
@@ -106,12 +104,6 @@
     <string name="sets_trusted_title"><![CDATA[Trusted Bitcoin node<br><br><small>Once an address is provided wallet will only be using your trusted node instead of random ones.</small>]]></string>
     <string name="sets_trusted">Use trusted Bitcoin node</string>
 
-    <!-- ln fee cap -->
-    <string name="sets_ln_fee_cap">Limit LN fees to chain fees</string>
-    <string name="ln_fee_cap_disabled"><![CDATA[Disabled, maximum LN fee is at most <strong>%1$s</strong> of payment]]></string>
-    <string name="ln_fee_cap_enabled"><![CDATA[Enabled, maximum LN fee is at most <strong>%1$s</strong> of payment, but not higher than current on-chain fee of <strong>%2$s</strong>]]></string>
-    <string name="ln_fee_expensive_omitted">Expensive routes were omitted, remove LN fee limit in settings if you would like to try more expensive routes</string>
-
     <!-- local backups -->
     <string name="sets_backups">Save local channel backups</string>
     <string name="ln_backup_detected">Channel backup file is present</string>
@@ -126,7 +118,7 @@
     <string name="ln_incoming_title"><![CDATA[<font color=#0099FE><strong>Lightning payment</strong></font><br>%1$s<br><br>incoming %2$s<br><small>%3$s at current rates</small>]]></string>
     <string name="ln_outgoing_title_no_fee"><![CDATA[<font color=#0099FE><strong>Lightning payment</strong></font><br>%1$s<br><br>sent %2$s<br><small>%3$s at current rates</small>]]></string>
     <string name="ln_outgoing_title"><![CDATA[<font color=#0099FE><strong>Lightning payment</strong></font><br>%1$s<br><br>sent %2$s<br><small>%3$s at current rates</small><br>fee %4$s = %5$.2f%%]]></string>
-    <string name="ln_hosted_preimage_revealed"><![CDATA[<i>preimage is revealed for this payment, please contact hosted channel provider <strong>before</strong> expiration if payment keeps pending like this</i>]]></string>
+    <string name="ln_hosted_preimage_revealed"><![CDATA[<i>payment secret has been revealed but payment itself is not resolved yet, please contact hosted channel provider if situation remains like this for more than two hours</i>]]></string>
 
     <string name="btc_incoming_title"><![CDATA[<font color=#E68A00><strong>Bitcoin transaction</strong></font><br>%1$s<br><br>received %2$s<br><small>%3$s at current rates</small>]]></string>
     <string name="btc_outgoing_title_no_fee"><![CDATA[<font color=#E68A00><strong>Bitcoin transaction</strong></font><br>%1$s<br><br>sent %2$s<br><small>%3$s at current rates</small>]]></string>
@@ -153,13 +145,12 @@
     <string name="ln_receive_option"><![CDATA[<font color=#0099FE>Lightning payment</font><small><br><br>%1$s</small>]]></string>
 
     <string name="ln_receive_howto"><![CDATA[
-        Receiving off-chain Lightning funds requires you to have at least one <a href=https://lightning-wallet.com/using-lightning-wallet#payment-channel>payment channel</a>. There are many ways to accomplish this:<br><br>
-        - Open an <i>outgoing channel</i> with a peer of your choice and spend some Lightning funds first to <a href=https://lightning-wallet.com/using-lightning-wallet#receiving-lightning-funds>make room</a> for incoming payments.<br><br>
-        - <a href=https://www.bitrefill.com/thor-lightning-network-channels>Order</a> an <i>incoming channel</i> from Bitrefill.<br><br>
-        - <a href=https://lnbig.com/#/open-channel/>Get a free incoming channel</a> from LNBIG.COM service.
+        Receiving off-chain Lightning funds requires you to have at least one <a href=https://lightning-wallet.com/using-lightning-wallet#payment-channel>payment channel</a>. There are two ways to accomplish this:<br><br>
+        1. Open an <i>outgoing channel</i> with a peer of your choice and spend some Lightning funds first to <a href=https://lightning-wallet.com/using-lightning-wallet#receiving-lightning-funds>make room</a> for incoming payments.<br><br>
+        2. <a href=https://www.bitrefill.com/thor-lightning-network-channels>Order</a> an <i>incoming channel</i> which would allow you to receive Lightning payments right away.
     ]]></string>
 
-    <string name="ln_receive_6conf"><![CDATA[&#9888; Can\'t ask for Lightning payments because your peer has not allowed receiving yet, this typically happens once a funding Bitcoin transaction gets 6 confirmations.]]></string>
+    <string name="ln_receive_6_confs"><![CDATA[&#9888; Can\'t ask for Lightning payments because your peer has not allowed receiving yet, this typically happens once a funding Bitcoin transaction gets 6 confirmations.]]></string>
     <string name="ln_receive_reserve"><![CDATA[&#9888; Can\'t ask for Lightning payments yet because first you need to spend at least %1$s in order to make some space for receiving.]]></string>
     <string name="ln_receive_suggestion"><![CDATA[&#9888; Can\'t ask for Lightning payments because no channels are present.<br>Tap to find out more!]]></string>
     <string name="ln_receive_ok">Make a QR-code with a Lightning Payment Request, can be used to receive fast off-chain payments.</string>
@@ -167,7 +158,7 @@
     <string name="btc_receive_option"><![CDATA[<font color=#FF9900>Bitcoin transaction</font><small><br><br>Make a QR-code with on-chain wallet address, can be used to receive regular Bitcoin transactions.</small>]]></string>
 
     <string name="err_ln_peer_offline">Could not connect to %1$s</string>
-    <string name="err_ln_peer_incompatible">%1$s does not support data loss protection</string>
+    <string name="err_ln_peer_incompatible">%1$s is incompatible with this wallet</string>
     <string name="err_ln_chan_exists_already">An open channel with this peer exists already, only one channel per peer is allowed for now, please try another node</string>
     <string name="err_ln_remote_amount_low">Failed because payment amount is too low for your peers to handle, the minimum acceptable amount is %1$s</string>
     <string name="err_ln_local_fee_high">Failed because payment amount becomes too high to handle for your channel when off-chain fee is added</string>
@@ -182,6 +173,8 @@
     <string name="err_ln_peer_can_not_route">Your peer can\'t route payments at this time, please try again a bit later or open another channel</string>
     <string name="err_tx_too_large">Failed because transaction is too big for Bitcoin network to process, try breaking it into a number of smaller transactions</string>
     <string name="err_empty_shrunk">Failed because an output could not be shrunken for fees, please add some funds and try again</string>
+    <string name="err_pr_unsupported">This payment request is not supported</string>
+    <string name="err_pr_expired">This payment request has expired</string>
     <string name="err_nothing_useful">No useful data found</string>
 
     <string name="err_not_enough_funds"><![CDATA[
@@ -206,10 +199,7 @@
     <string name="ln_state_success">paid successfully</string>
     <string name="ln_state_fail_out">failed and refunded</string>
     <string name="ln_state_fail_in">expired and cancelled</string>
-    <string name="ln_state_unknown">unknown status</string>
 
-    <string name="ln_info_total_payments">total payments</string>
-    <string name="ln_info_in_flight">value in-flight</string>
     <string name="ln_info_can_receive">can receive</string>
     <string name="ln_info_refundable">refundable</string>
     <string name="ln_info_depth">funding depth</string>
@@ -238,7 +228,6 @@
     <string name="ln_info_status_shutdown"><![CDATA[<font color=#E68A00>SHUTDOWN</font>]]></string>
     <string name="ln_info_status_negotiations"><![CDATA[<font color=#E68A00>NEGOTIATION</font>]]></string>
     <string name="ln_info_status_suspended"><![CDATA[<font color=#E68A00>SUSPENDED</font>]]></string>
-    <string name="ln_info_status_other"><![CDATA[<font color=#777777>%1$s</font>]]></string>
 
     <string name="ln_chan_close_inflight_details"><![CDATA[<small><br></small>&#9888; <font color=#E68A00>Pending payments are present</font> so cooperative closing is going to be postponed until they are resolved.<br><br>It is recommended to wait until these payments become failed or fulfilled before closing, would you still like to close it right now?]]></string>
     <string name="ln_chan_force_details"><![CDATA[<small><br></small>&#9888; Note that closing right now will result in a <a href=http://lightning-wallet.com/using-lightning-wallet#forced-channel-closure>forced channel closure</a> which requires additional fees and time, would you still like to close it right now?]]></string>
@@ -262,7 +251,7 @@
     <array name="ln_hosted_chan_actions">
         <item><![CDATA[About hosted channels]]></item>
         <item><![CDATA[Export channel state]]></item>
-        <item><![CDATA[Remove this channel]]></item>
+        <item><![CDATA[Remove channel]]></item>
     </array>
 
     <string name="btc_empty"><![CDATA[<font color=#BBBBBB>No on-chain funds</font>]]></string>
@@ -284,12 +273,6 @@
         <item><![CDATA[No open channels]]></item>
         <item><![CDATA[<font color=#E68A00>Getting %1$s channel up</font>]]></item>
         <item><![CDATA[<font color=#E68A00>Getting %1$s channels up</font>]]></item>
-    </array>
-
-    <array name="ln_status_expiry">
-        <item><![CDATA[expired, got stuck]]></item>
-        <item><![CDATA[expires in %1$s block]]></item>
-        <item><![CDATA[expires in %1$s blocks]]></item>
     </array>
 
     <!-- opening a new channel -->

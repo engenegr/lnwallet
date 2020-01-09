@@ -61,24 +61,25 @@ class Cloud(val identifier: String, var connector: Connector, var auth: Int, val
         case _ =>
       }
 
-    // We can't upload actions but have a memo to resolve
     case CloudData(Some(pr \ memo), _, _) \ CMDStart if isFree =>
-      // Payment may still be unsent OR in-flight OR fulfilled OR failed already
-      val isInFlight = ChannelManager.activeInFlightHashes contains pr.paymentHash
+      // We can't upload actions but have a memo, attempt resolving
 
-      if (!isInFlight) {
-        // Assume that payment has been fulfilled and try to obtain storage tokens
-        val send = connector.ask[BigIntegerVec]("blindtokens/redeem", "seskey" -> memo.key)
-        val sendRelease = send doOnSubscribe { isFree = false } doOnTerminate { isFree = true }
-        val sendConvert = sendRelease.map(memo.makeClearSigs).map(memo.packEverything).doOnCompleted(me doProcess CMDStart)
-        sendConvert.foreach(freshTokens => me BECOME data.copy(info = None, tokens = data.tokens ++ freshTokens), onError)
+      LNParams.bag.getPaymentInfo(pr.paymentHash) match {
+        case Some(paymentInfo) if paymentInfo.status == PaymentInfo.SUCCESS =>
+          val send = connector.ask[BigIntegerVec]("blindtokens/redeem", "seskey" -> memo.key)
+          val sendRelease = send doOnSubscribe { isFree = false } doOnTerminate { isFree = true }
+          val sendConvert = sendRelease.map(memo.makeClearSigs).map(memo.packEverything).doOnCompleted(me doProcess CMDStart)
+          sendConvert.foreach(freshTokens => me BECOME data.copy(info = None, tokens = data.tokens ++ freshTokens), onError)
+
+        case Some(paymentInfo) if paymentInfo.status == PaymentInfo.FAILURE && pr.isFresh => retryFreshRequest(pr)
+        case Some(paymentInfo) if paymentInfo.status == PaymentInfo.FAILURE => me BECOME data.copy(info = None)
+        case None => me BECOME data.copy(info = None)
+        case _ => // Payment is still in flight
       }
 
-      def onError(err: Throwable) = err.getMessage match {
-        case "notfulfilled" if pr.isFresh => retryFreshRequest(pr)
-        case "notfulfilled" => me BECOME data.copy(info = None)
-        case "notfound" => me BECOME data.copy(info = None)
-        case other => Tools log other
+      def onError(error: Throwable) = error.getMessage match {
+        case "notfulfilled" | "notfound" => me BECOME data.copy(info = None)
+        case _ => // Do nothing, try to obtain tokens again at a later time
       }
 
     case (_, act: CloudAct) if 0 == removable || isAuthEnabled || data.tokens.nonEmpty =>
@@ -97,16 +98,14 @@ class Cloud(val identifier: String, var connector: Connector, var auth: Int, val
       case (signerMasterPubKey, signerSessionPubKey, quantity) =>
         val pubKeyQ = ECKey.fromPublicOnly(HEX decode signerMasterPubKey)
         val pubKeyR = ECKey.fromPublicOnly(HEX decode signerSessionPubKey)
-        val ecBlind = new ECBlind(pubKeyQ.getPubKeyPoint, pubKeyR.getPubKeyPoint)
-
-        val memo = BlindMemo(ecBlind params quantity, ecBlind tokens quantity, pubKeyR.getPublicKeyAsHex)
-        connector.ask[String]("blindtokens/buy", "tokens" -> memo.makeBlindTokens.toJson.toString.s2hex,
-          "seskey" -> memo.key).map(PaymentRequest.read).map(pr => pr -> memo)
+        val ecBlindEngine = new ECBlind(pubKeyQ.getPubKeyPoint, pubKeyR.getPubKeyPoint)
+        val memo = BlindMemo(params = ecBlindEngine.params(quantity), clears = ecBlindEngine.tokens(quantity), key = pubKeyR.getPublicKeyAsHex)
+        connector.ask[String]("blindtokens/buy", "tokens" -> memo.makeBlindTokens.toJson.toString.s2hex, "seskey" -> memo.key).map(pr => PaymentRequest.read(pr) -> memo)
     }
 
   def isAuthEnabled = 1 == auth
   def retryFreshRequest(failedPr: PaymentRequest): Unit = {
-    val retryRD = app.emptyRD(failedPr, failedPr.msatOrMin.amount, useCache = true)
+    val retryRD = app.emptyRD(failedPr, failedPr.msatOrMin.amount)
     // We do not care about options such as AIR or AMP here because price is supposed to be small
     if (ChannelManager.checkIfSendable(retryRD).isRight) PaymentInfoWrap addPendingPayment retryRD
   }

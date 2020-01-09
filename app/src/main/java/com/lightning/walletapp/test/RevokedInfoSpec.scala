@@ -1,5 +1,6 @@
 package com.lightning.walletapp.test
 
+import com.lightning.walletapp.ChannelManager
 import com.lightning.walletapp.helper.AES
 import com.lightning.walletapp.ln.LNParams._
 import com.lightning.walletapp.ln.Scripts.InputInfo
@@ -17,7 +18,7 @@ class RevokedInfoSpec {
   val chanId1 = ByteVector.view(random getBytes 32)
   val chanId2 = ByteVector.view(random getBytes 32)
 
-  val ri = RevocationInfo(redeemScriptsToSigs = Nil, claimMainTxSig = None, claimPenaltyTxSig = None, LNParams.broadcaster.perKwThreeSat,
+  val ri = RevocationInfo(redeemScriptsToSigs = Nil, claimMainTxSig = None, claimPenaltyTxSig = None, ChannelManager.perKwThreeSat,
     LNParams.dust.amount, randomPrivKey.publicKey, 144, randomPrivKey.publicKey, randomPrivKey.publicKey, randomPrivKey.publicKey)
 
   val txid1 = ByteVector.view(random getBytes 32)

@@ -23,6 +23,7 @@ import org.ndeftools.Message;
 import org.ndeftools.Record;
 import org.ndeftools.UnsupportedRecord;
 import org.ndeftools.wellknown.TextRecord;
+import org.ndeftools.wellknown.UriRecord;
 
 import android.app.Activity;
 import android.content.Intent;
@@ -115,6 +116,10 @@ public abstract class NfcReaderActivity extends NfcDetectorActivity {
 
 			if (record instanceof TextRecord) {
 				return ((TextRecord) record).getText();
+			}
+
+			if (record instanceof UriRecord) {
+				return ((UriRecord) record).getUri().toString();
 			}
 		}
 

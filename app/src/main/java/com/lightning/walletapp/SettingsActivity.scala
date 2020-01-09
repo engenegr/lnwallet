@@ -32,10 +32,8 @@ class SettingsActivity extends TimerActivity with HumanTimeDisplay { me =>
   lazy val useTrustedNode = findViewById(R.id.useTrustedNode).asInstanceOf[CheckBox]
   lazy val saveLocalBackups = findViewById(R.id.saveLocalBackups).asInstanceOf[CheckBox]
   lazy val fpAuthentication = findViewById(R.id.fpAuthentication).asInstanceOf[CheckBox]
-  lazy val constrainLNFees = findViewById(R.id.constrainLNFees).asInstanceOf[CheckBox]
 
   lazy val useTrustedNodeState = findViewById(R.id.useTrustedNodeState).asInstanceOf[TextView]
-  lazy val constrainLNFeesState = findViewById(R.id.constrainLNFeesState).asInstanceOf[TextView]
   lazy val saveLocalBackupsPath = findViewById(R.id.saveLocalBackupsPath).asInstanceOf[TextView]
 
   lazy val chooseBitcoinUnit = findViewById(R.id.chooseBitcoinUnit).asInstanceOf[Button]
@@ -103,17 +101,12 @@ class SettingsActivity extends TimerActivity with HumanTimeDisplay { me =>
     }
   }
 
-  def onConstrainLNFeesTap(cb: View) = wrap(updateConstrainLNFeesView) {
-    app.prefs.edit.putBoolean(AbstractKit.CAP_LN_FEES, constrainLNFees.isChecked).commit
-  }
-
   def INIT(s: Bundle) = if (app.isAlive) {
     me setContentView R.layout.activity_settings
     me initToolbar findViewById(R.id.toolbar).asInstanceOf[Toolbar]
-    getSupportActionBar setSubtitle "App version 0.4-146"
+    getSupportActionBar setSubtitle "App version 0.4-154"
     getSupportActionBar setTitle wallet_settings
 
-    updateConstrainLNFeesView
     updateTrustedView
     updateBackupView
     updateFpView
@@ -191,8 +184,9 @@ class SettingsActivity extends TimerActivity with HumanTimeDisplay { me =>
           ciphertext <- backups
           cipherbytes = ByteVector.fromValidHex(ciphertext).toArray
           ref <- AES.decBytes(cipherbytes, LNParams.keys.cloudSecret.toArray) map bin2readable map to[RefundingData]
-          if !ChannelManager.all.flatMap(_.getCommits).map(_.channelId).contains(ref.commitments.channelId)
-        } ChannelManager.all +:= ChannelManager.createChannel(ChannelManager.operationalListeners, ref)
+          if ChannelManager.findById(from = ChannelManager.all, chanId = ref.commitments.channelId).isEmpty
+          chan = ChannelManager.createChannel(ChannelManager.operationalListeners, ref)
+        } ChannelManager.all +:= chan
 
         // Disconnect in case if we are already connected to target node
         // without doing this a channel reestablish won't be happening
@@ -234,12 +228,5 @@ class SettingsActivity extends TimerActivity with HumanTimeDisplay { me =>
     if (nodeAddressTry.isFailure) useTrustedNodeState setText trusted_hint_none
     else useTrustedNodeState setText nodeAddressTry.get.toString
     useTrustedNode setChecked nodeAddressTry.isSuccess
-  }
-
-  def updateConstrainLNFeesView = {
-    constrainLNFees setChecked app.prefs.getBoolean(AbstractKit.CAP_LN_FEES, false)
-    val constrainedText = getString(ln_fee_cap_enabled).format("1%", denom parsedWithSign PaymentInfo.onChainThreshold)
-    val message = if (constrainLNFees.isChecked) constrainedText else getString(ln_fee_cap_disabled).format("1%")
-    constrainLNFeesState setText message.html
   }
 }

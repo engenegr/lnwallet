@@ -9,9 +9,12 @@ import fr.acinq.bitcoin.{Crypto, LexicographicalOrdering, MilliSatoshi, Protocol
 import java.net.{Inet4Address, Inet6Address, InetAddress, InetSocketAddress}
 import fr.acinq.bitcoin.Crypto.{Point, PrivateKey, PublicKey, Scalar}
 import com.lightning.walletapp.lnutils.olympus.OlympusWrap.StringVec
+import com.lightning.walletapp.ln.crypto.Sphinx.PaymentPacket
 import com.lightning.walletapp.ln.crypto.Sphinx
+import com.lightning.walletapp.ChannelManager
 import fr.acinq.eclair.UInt64
 import scodec.bits.ByteVector
+import scodec.Attempt
 
 
 trait LightningMessage { me =>
@@ -57,6 +60,7 @@ case class FundingSigned(channelId: ByteVector, signature: ByteVector) extends C
 
 case class ClosingSigned(channelId: ByteVector, feeSatoshis: Long, signature: ByteVector) extends ChannelMessage
 case class FundingLocked(channelId: ByteVector, nextPerCommitmentPoint: Point) extends ChannelMessage { me =>
+  def nextPointRight = Right(nextPerCommitmentPoint)
   def some = Some(me)
 }
 
@@ -65,7 +69,22 @@ case class Shutdown(channelId: ByteVector, scriptPubKey: ByteVector) extends Cha
 }
 
 case class UpdateAddHtlc(channelId: ByteVector, id: Long, amountMsat: Long, paymentHash: ByteVector, expiry: Long,
-                         onionRoutingPacket: OnionRoutingPacket = Sphinx.emptyOnionPacket) extends ChannelMessage {
+                         onionRoutingPacket: OnionRoutingPacket = Sphinx.emptyOnionPacket) extends ChannelMessage { me =>
+
+  def incorrectDetails = IncorrectOrUnknownPaymentDetails(amountMsat, ChannelManager.currentHeight)
+  lazy val initResolution = PaymentPacket.peel(LNParams.keys.extendedNodeKey.privateKey, paymentHash, onionRoutingPacket) match {
+    case Right(packet) if packet.isLastPacket => LightningMessageCodecs.finalPerHopPayloadCodec.decode(packet.payload.bits) match {
+      case Attempt.Failure(error: MissingRequiredTlv) => PaymentInfo.failHtlc(packet, InvalidOnionPayload(error.tag, 0), me)
+      case _: Attempt.Failure => PaymentInfo.failHtlc(packet, InvalidOnionPayload(UInt64(0), 0), me)
+
+      case Attempt.Successful(payload) if payload.value.cltvExpiry != expiry => PaymentInfo.failHtlc(packet, FinalIncorrectCltvExpiry(expiry), me)
+      case Attempt.Successful(payload) if payload.value.amountMsat != amountMsat => PaymentInfo.failHtlc(packet, incorrectDetails, me)
+      case Attempt.Successful(payload) if ChannelManager.cltvReserveTooSmall(me) => PaymentInfo.failHtlc(packet, incorrectDetails, me)
+      case Attempt.Successful(payload) => FinalPayloadSpec(packet, payload.value, me)
+    }
+    case Right(packet) => PaymentInfo.failHtlc(packet, incorrectDetails, me)
+    case Left(error) => CMDFailMalformedHtlc(error.onionHash, error.code, me)
+  }
 
   lazy val hash160 = Crypto.ripemd160(paymentHash)
   lazy val amount = MilliSatoshi(amountMsat)

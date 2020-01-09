@@ -3,12 +3,10 @@
     xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-feature android:name="android.hardware.fingerprint" android:required="false"/>
-    <uses-permission android:name="android.permission.USE_FINGERPRINT"/>
-
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.USE_FINGERPRINT"/>
     <uses-permission android:name="android.permission.INTERNET"/>
-    <uses-permission android:name="android.permission.VIBRATE"/>
     <uses-permission android:name="android.permission.CAMERA"/>
     <uses-permission android:name="android.permission.NFC"/>
 
@@ -25,11 +23,11 @@
         android:icon="@mipmap/ic_launcher"
         android:fullBackupContent="false"
         android:allowBackup="false"
-        android:label="BLW">
+        android:label="Testnet">
 
         <provider
             android:name="android.support.v4.content.FileProvider"
-            android:authorities="com.lightning.walletapp"
+            android:authorities="com.lightning.wallet"
             android:grantUriPermissions="true"
             android:exported="false">
 
@@ -42,6 +40,10 @@
         <service
             android:stopWithTask="true"
             android:name="com.lightning.walletapp.helper.AwaitService"/>
+
+        <receiver
+            android:process=":remote"
+            android:name="helper.Notificator"/>
 
         <activity
             android:name="com.lightning.walletapp.MainActivity"

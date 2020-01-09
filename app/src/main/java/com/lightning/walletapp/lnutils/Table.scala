@@ -67,51 +67,27 @@ object BadEntityTable extends Table {
       $expire INTEGER NOT NULL,
       $amount INTEGER NOT NULL
     );
-
     /* resId index is created automatically because this field is UNIQUE */
     CREATE INDEX IF NOT EXISTS idx1$table ON $table ($expire, $amount);
     COMMIT"""
 }
 
-object RouteTable extends Table {
-  val (table, path, targetNode) = Tuple3("route", "path", "targetNode")
-  val newSql = s"INSERT OR IGNORE INTO $table ($path, $targetNode) VALUES (?, ?)"
-  val updSql = s"UPDATE $table SET $path = ? WHERE $targetNode = ?"
-  val selectSql = s"SELECT * FROM $table WHERE $targetNode = ?"
-  val killSql = s"DELETE FROM $table WHERE $targetNode = ?"
-
-  val createSql = s"""
-    CREATE TABLE IF NOT EXISTS $table (
-      $id INTEGER PRIMARY KEY AUTOINCREMENT,
-      $targetNode STRING NOT NULL UNIQUE,
-      $path STRING NOT NULL
-    )"""
-}
-
 object PaymentTable extends Table {
-  val (search, table, pr, preimage, incoming, status, stamp) = ("search", "payment", "pr", "preimage", "incoming", "status", "stamp")
-  val (description, hash, firstMsat, lastMsat, lastExpiry, chanId) = ("description", "hash", "firstMsat", "lastMsat", "lastExpiry", "chanId")
-  val insert11 = s"$pr, $preimage, $incoming, $status, $stamp, $description, $hash, $firstMsat, $lastMsat, $lastExpiry, $chanId"
-  val newSql = s"INSERT OR IGNORE INTO $table ($insert11) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+  val (search, table, pr, preimage, incoming, status, stamp, description, hash, firstMsat, lastMsat) = ("search", "payment", "pr", "preimage", "incoming", "status", "stamp", "description", "hash", "firstMsat", "lastMsat")
+  val newSql = s"INSERT OR IGNORE INTO $table ($pr, $preimage, $incoming, $status, $stamp, $description, $hash, $firstMsat, $lastMsat, lastExpiry, chanId) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0)"
   val newVirtualSql = s"INSERT INTO $fts$table ($search, $hash) VALUES (?, ?)"
 
   // Selecting
   val selectSql = s"SELECT * FROM $table WHERE $hash = ?"
   val selectRecentSql = s"SELECT * FROM $table ORDER BY $id DESC LIMIT 48"
-  val selectPaymentNumSql = s"SELECT count($hash) FROM $table WHERE $status = $SUCCESS AND $chanId = ?"
   val searchSql = s"SELECT * FROM $table WHERE $hash IN (SELECT $hash FROM $fts$table WHERE $search MATCH ? LIMIT 96)"
 
   // Updating, creating, removing
-  val updOkOutgoingSql = s"UPDATE $table SET $status = $SUCCESS, $preimage = ?, $chanId = ? WHERE $hash = ?"
-  val updOkIncomingSql = s"UPDATE $table SET $status = $SUCCESS, $firstMsat = ?, $stamp = ?, $chanId = ? WHERE $hash = ?"
-  val updLastParamsOutgoingSql = s"UPDATE $table SET $status = $WAITING, $firstMsat = ?, $lastMsat = ?, $lastExpiry = ? WHERE $hash = ?"
+  val updOkOutgoingSql = s"UPDATE $table SET $status = $SUCCESS, $preimage = ? WHERE $hash = ?"
+  val updOkIncomingSql = s"UPDATE $table SET $status = $SUCCESS, $firstMsat = ?, $stamp = ? WHERE $hash = ?"
+  val updLastParamsOutgoingSql = s"UPDATE $table SET $status = $WAITING, $firstMsat = ?, $lastMsat = ? WHERE $hash = ?"
   // Broken in-flight payment may become fulfilled but then get overridden on restart unless we check for SUCCESS
   val updStatusSql = s"UPDATE $table SET $status = ? WHERE $hash = ? AND $status <> $SUCCESS"
-
-  val updFailWaitingSql = s"""
-    UPDATE $table SET $status = $FAILURE /* fail those payments which... */
-    WHERE ($status = $WAITING AND $incoming = 0) /* outgoing and pending or not in commits */
-    OR ($status = $WAITING AND $incoming = 1 AND $stamp < ?) /* incoming and expired by now */"""
 
   // Once incoming or outgoing payment is settled we can search it by various metadata
   val createVSql = s"CREATE VIRTUAL TABLE IF NOT EXISTS $fts$table USING $fts($search, $hash)"
@@ -120,12 +96,10 @@ object PaymentTable extends Table {
     CREATE TABLE IF NOT EXISTS $table (
       $id INTEGER PRIMARY KEY AUTOINCREMENT, $pr STRING NOT NULL, $preimage STRING NOT NULL, $incoming INTEGER NOT NULL,
       $status INTEGER NOT NULL, $stamp INTEGER NOT NULL, $description STRING NOT NULL, $hash STRING NOT NULL UNIQUE,
-      $firstMsat INTEGER NOT NULL, $lastMsat INTEGER NOT NULL, $lastExpiry INTEGER NOT NULL, $chanId STRING NOT NULL
+      $firstMsat INTEGER NOT NULL, $lastMsat INTEGER NOT NULL, lastExpiry INTEGER NOT NULL, chanId STRING NOT NULL
     );
-
     /* hash index is created automatically because this field is UNIQUE */
     CREATE INDEX IF NOT EXISTS idx1$table ON $table ($status, $incoming, $stamp);
-    CREATE INDEX IF NOT EXISTS idx2$table ON $table ($chanId);
     COMMIT"""
 }
 
@@ -151,7 +125,7 @@ object RevokedInfoTable extends Table {
 
 trait Table { val (id, fts) = "_id" -> "fts4" }
 class LNOpenHelper(context: Context, name: String)
-  extends SQLiteOpenHelper(context, name, null, 7) {
+  extends SQLiteOpenHelper(context, name, null, 17) {
 
   val base = getWritableDatabase
   val asString: Any => String = {
@@ -162,7 +136,7 @@ class LNOpenHelper(context: Context, name: String)
 
   def change(sql: String, params: Any*) = base.execSQL(sql, params.map(asString).toArray)
   def select(sql: String, params: Any*) = base.rawQuery(sql, params.map(asString).toArray)
-  def sqlPath(tbl: String) = Uri parse s"sqlite://com.lightning.walletapp/table/$tbl"
+  def sqlPath(tbl: String) = Uri parse s"sqlite://com.lightning.wallet/table/$tbl"
 
   def txWrap(run: => Unit) = try {
     runAnd(base.beginTransaction)(run)
@@ -175,29 +149,21 @@ class LNOpenHelper(context: Context, name: String)
     dbs execSQL PaymentTable.createVSql
     dbs execSQL PaymentTable.createSql
     dbs execSQL ChannelTable.createSql
-    dbs execSQL RouteTable.createSql
 
     dbs execSQL OlympusLogTable.createSql
     dbs execSQL OlympusTable.createSql
-
-    // Randomize an order of two available default servers
-    val (ord1, ord2) = if (random.nextBoolean) ("0", "1") else ("1", "0")
-    val emptyData = CloudData(info = None, tokens = Vector.empty, acts = Vector.empty).toJson.toString
-    val dev1: Array[AnyRef] = Array("server-1", "https://a.lightning-wallet.com:9103", emptyData, "1", ord1, "0")
-    val dev2: Array[AnyRef] = Array("server-2", "https://b.lightning-wallet.com:9103", emptyData, "0", ord2, "1")
-    dbs.execSQL(OlympusTable.newSql, dev1)
-    dbs.execSQL(OlympusTable.newSql, dev2)
+    populateOlympus(dbs)
   }
 
   def onUpgrade(dbs: SQLiteDatabase, v0: Int, v1: Int) = {
-    // Old version of RouteTable had a useless expiry column
-    dbs execSQL s"DROP TABLE IF EXISTS ${RouteTable.table}"
+    dbs execSQL s"DROP TABLE IF EXISTS ${OlympusTable.table}"
+    dbs execSQL OlympusTable.createSql
+    populateOlympus(dbs)
+  }
 
-    // Should work even for updates across many version ranges
-    // because each table and index has CREATE IF EXISTS prefix
-    dbs execSQL RevokedInfoTable.createSql
-    dbs execSQL OlympusLogTable.createSql
-    dbs execSQL PaymentTable.createSql
-    dbs execSQL RouteTable.createSql
+  def populateOlympus(dbs: SQLiteDatabase) = {
+    val emptyData = CloudData(info = None, tokens = Vector.empty, acts = Vector.empty).toJson.toString
+    val dev: Array[AnyRef] = Array("test-server-1", "https://107.172.253.20:9203", emptyData, "1", "0", "0")
+    dbs.execSQL(OlympusTable.newSql, dev)
   }
 }

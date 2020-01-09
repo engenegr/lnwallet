@@ -124,19 +124,9 @@
             <TextView style="@style/CardBaseText" android:id="@+id/closedAtText" android:gravity="end"/>
         </LinearLayout>
 
-        <LinearLayout style="@style/CardLinearLayout" android:id="@+id/paymentsInFlight">
-            <TextView style="@style/CardBaseText" android:text="@string/ln_info_in_flight"/>
-            <TextView style="@style/CardBaseText" android:id="@+id/paymentsInFlightText" android:gravity="end"/>
-        </LinearLayout>
-
         <LinearLayout style="@style/CardLinearLayout" android:id="@+id/fundingDepth">
             <TextView style="@style/CardBaseText" android:text="@string/ln_info_depth"/>
             <TextView style="@style/CardBaseText" android:id="@+id/fundingDepthText" android:gravity="end"/>
-        </LinearLayout>
-
-        <LinearLayout style="@style/CardLinearLayout" android:id="@+id/totalPayments">
-            <TextView style="@style/CardBaseText" android:text="@string/ln_info_total_payments"/>
-            <TextView style="@style/CardBaseText" android:id="@+id/totalPaymentsText" android:gravity="end"/>
         </LinearLayout>
 
         <!-- Extra message -->

@@ -50,7 +50,7 @@ object LocalBackup {
   }
 
   def encryptAndWrite(file: File, channels: Vector[Channel], wallet: Wallet, secret: ByteVector) = {
-    // Collect siutable commitments data and calculate earliest watch timestamp for restored wallet
+    // Collect suitable commitments data and calculate earliest watch timestamp for restored wallet
 
     // Everything except refunds for which we don't have points
     val datas: Vector[ChannelData] = channels.map(_.data).filter {

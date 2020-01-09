@@ -19,7 +19,7 @@ object AwaitService {
 class AwaitService extends Service { me =>
   override def onBind(intent: Intent) = null
 
-  override def onDestroy = runAnd(super.onDestroy){
+  override def onDestroy = runAnd(super.onDestroy) {
     val service = getSystemService(Context.NOTIFICATION_SERVICE)
     service.asInstanceOf[NotificationManager] cancel AwaitService.NOTIFICATION_ID
   }

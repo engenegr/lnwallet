@@ -95,7 +95,8 @@
                 style="@style/MarginInfo"
                 android:text="@string/sets_mnemonic"
                 android:layout_width="wrap_content"
-                android:onClick="viewMnemonic"/>
+                android:onClick="viewMnemonic"
+                android:paddingTop="25dp"/>
 
             <TextView
                 style="@style/MarginInfo"

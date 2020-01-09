@@ -2,15 +2,13 @@ package com.lightning.walletapp.ln
 
 import fr.acinq.bitcoin._
 import com.lightning.walletapp.lnutils._
-import com.lightning.walletapp.ln.Scripts._
+import com.lightning.walletapp.ln.LNParams._
 import fr.acinq.bitcoin.DeterministicWallet._
 import com.lightning.walletapp.Utils.{app, dbFileName}
 import fr.acinq.bitcoin.Crypto.{PrivateKey, PublicKey, sha256}
 import com.lightning.walletapp.ln.RoutingInfoTag.PaymentRoute
 import com.lightning.walletapp.lnutils.olympus.OlympusWrap
-import com.lightning.walletapp.ln.LNParams.DepthAndDead
 import com.lightning.walletapp.ln.wire.NodeAnnouncement
-import com.lightning.walletapp.ChannelManager
 import com.lightning.walletapp.ln.Tools.Bytes
 import java.io.ByteArrayInputStream
 import fr.acinq.eclair.UInt64
@@ -20,16 +18,17 @@ import java.nio.ByteOrder
 
 object LNParams {
   type DepthAndDead = (Int, Boolean)
-  val localFeatures = ByteVector.fromValidHex("8a") // data_loss_protect, channel_range_queries
+  val localFeatures = ByteVector.fromValidHex("89") // data_loss_protect_mandatory
   val globalFeatures = ByteVector.fromValidHex("0200") // variable_length_onion
-  val chainHash = Block.LivenetGenesisBlock.hash
+  val chainHash = Block.TestnetGenesisBlock.hash
 
   val minDepth = 1
   val blocksPerDay = 144
+  val minPaymentMsat = 10000L
   val minCapacityMsat = 200000000L
   val channelReserveToFundingRatio = 200 // 0.5%
   val minHostedOnChainRefundSat = 1000000L
-  val minHostedLiabilityBlockdays = 360
+  val minHostedLiabilityBlockdays = 500
   val maxHostedBlockHeight = 500000L
 
   final val dust = Satoshi(546)
@@ -37,8 +36,6 @@ object LNParams {
   final val minFeeratePerKw = 253
   final val maxCltvDelta = blocksPerDay * 14L
   final val maxCapacity = MilliSatoshi(16777215000L)
-
-  lazy val broadcaster: Broadcaster = ChannelManager
   lazy val bag: PaymentInfoBag with ChannelListener = PaymentInfoWrap
 
   var db: LNOpenHelper = _
@@ -60,7 +57,6 @@ object LNParams {
     mismatch < -0.25 || mismatch > 0.25
   }
 
-  def updateFeerate = for (chan <- ChannelManager.all) chan process CMDFeerate(broadcaster.perKwThreeSat)
   def makeLocalParams(ann: NodeAnnouncement, theirReserve: Long, finalScriptPubKey: ByteVector, fundKey: PrivateKey, isFunder: Boolean) = {
     // It's always possible to re-derive all secret keys because a keyPath is generated from funding pubKey which will be present on a blockchain
     val Seq(revocationSecret, paymentKey, delayedPaymentKey, htlcKey, shaSeed) = keys.makeChanKeys(fundKey.publicKey)
@@ -123,6 +119,7 @@ object ChanErrorCodes {
   val ERR_REMOTE_AMOUNT_HIGH = 2
   val ERR_REMOTE_AMOUNT_LOW = 3
   val ERR_TOO_MANY_HTLC = 4
+  val ERR_CAN_NOT_ADD = 5
 }
 
 trait PublishStatus {
@@ -141,34 +138,3 @@ case class HideReady(txn: Transaction) extends PublishStatus
 case class ShowReady(txn: Transaction, fee: Satoshi, amount: Satoshi) extends PublishStatus
 case class HideDelayed(parent: (DepthAndDead, Long), txn: Transaction) extends DelayedPublishStatus
 case class ShowDelayed(parent: (DepthAndDead, Long), txn: Transaction, commitTx: Transaction, fee: Satoshi, amount: Satoshi) extends DelayedPublishStatus
-
-trait Broadcaster extends ChannelListener {
-  def getTx(txid: ByteVector): Option[org.bitcoinj.core.Transaction]
-  def getStatus(txid: ByteVector): DepthAndDead
-
-  def currentBlockDay: Int
-  def currentHeight: Int
-
-  def perKwThreeSat: Long
-  def perKwSixSat: Long
-
-  // Parent state and next tier cltv delay
-  // actual negative delay will be represented as 0L
-  def cltv(parent: Transaction, child: Transaction) = {
-    val parentDepth \ parentIsDead = getStatus(parent.txid)
-    val cltvDelay = math.max(cltvBlocks(child) - currentHeight, 0L)
-    parentDepth -> parentIsDead -> cltvDelay
-  }
-
-  // Parent state and cltv + next tier csv delay
-  // actual negative delay will be represented as 0L
-  def csv(parent: Transaction, child: Transaction) = {
-    val parentDepth \ parentIsDead = getStatus(parent.txid)
-    val cltvDelay = math.max(cltvBlocks(parent) - currentHeight, 0L)
-    val csvDelay = math.max(csvTimeout(child) - parentDepth, 0L)
-    parentDepth -> parentIsDead -> (cltvDelay + csvDelay)
-  }
-
-  def csvShowDelayed(t1: TransactionWithInputInfo, t2: TransactionWithInputInfo, commitTx: Transaction) =
-    ShowDelayed(parent = csv(t1.tx, t2.tx), t2.tx, commitTx, fee = t1 -- t2, t2.tx.allOutputsAmount)
-}

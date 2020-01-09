@@ -22,6 +22,8 @@ class ThrottledWorkSpec {
     addWorker.addWork("-- tes")
     addWorker.addWork("-- test")
 
+    // =============================================
+
     val replaceWorker = new ThrottledWork[String, String] {
       def work(input: String) = queue.map { _ =>
         Thread.sleep(5000)
@@ -39,5 +41,21 @@ class ThrottledWorkSpec {
     replaceWorker.replaceWork("-- tes1")
     Thread.sleep(3000)
     replaceWorker.replaceWork("-- test1")
+
+    // =============================================
+
+    val replaceWorker2 = new ThrottledWork[Runnable, Runnable] {
+      def work(input: Runnable) = queue.map { _ =>
+        Thread.sleep(1000)
+        input
+      }
+
+      def process(ask: Runnable, result: Runnable) = result.run()
+      def error(err: Throwable) = err.printStackTrace
+    }
+
+    replaceWorker2.replaceWork(new Runnable {
+      override def run(): Unit = assert(replaceWorker2.hasFinishedOrNeverStarted)
+    })
   }
 }

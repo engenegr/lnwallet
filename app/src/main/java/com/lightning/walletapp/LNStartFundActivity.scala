@@ -54,14 +54,11 @@ class LNStartFundActivity extends TimerActivity { me =>
     FragWallet.worker.reg(chan)
   }
 
-  def saveNormalChannel(chan: NormalChannel, some: HasNormalCommits) = {
-    // Saving error will halt all further progress, this is exactly desired
-    chan STORE some
-
-    app.kit.wallet.addWatchedScripts(app.kit fundingPubScript some)
-    // Start watching a channel funding script and save a channel, order an encrypted backup upload
+  def finalizeNormalSetup(chan: NormalChannel, some: HasNormalCommits) = {
+    // Order an encrypted backup upload, start watching a channel funding script
     val encrypted = AES.encReadable(RefundingData(some.announce, None, some.commitments).toJson.toString, LNParams.keys.cloudSecret.toArray)
     val chanUpload = ChannelUploadAct(encrypted.toByteVector, Seq("key" -> LNParams.keys.cloudId.toHex), "data/put", some.announce.alias)
+    app.kit.wallet.addWatchedScripts(app.kit fundingPubScript some)
     LNParams.olympusWrap tellClouds chanUpload
     finalizeSetup(chan)
   }
@@ -124,9 +121,9 @@ class LNStartFundActivity extends TimerActivity { me =>
           // GUARD: Funding with unreachable on-chain peers is problematic, cancel and let user know
           onException(freshChannel -> chainNotConnectedYet)
 
-        case transition @ (_: NormalChannel, wait: WaitFundingDoneData, WAIT_FUNDING_SIGNED, WAIT_FUNDING_DONE) =>
-          // Preliminary negotiations are complete, save channel FIRST and THEN broadcast a funding transaction
-          saveNormalChannel(freshChannel, wait)
+        case (_: NormalChannel, wait: WaitFundingDoneData, WAIT_FUNDING_SIGNED, WAIT_FUNDING_DONE) =>
+          // Preliminary negotiations are complete, channel is persisted, we broadcast a funding transaction
+          finalizeNormalSetup(freshChannel, wait)
           ConnectionManager.listeners -= this
           app.kit blockSend wait.fundingTx
       }
@@ -139,7 +136,7 @@ class LNStartFundActivity extends TimerActivity { me =>
           val batch = Batch(unsignedRequest, dummyScript = dummy)
           val theirReserveImposedByUsSat = batch.fundingAmountSat / LNParams.channelReserveToFundingRatio
           val localParams = LNParams.makeLocalParams(ann, theirReserveImposedByUsSat, walletPubKeyScript, randomPrivKey, isFunder = true)
-          val cmd = CMDOpenChannel(localParams, ByteVector(random getBytes 32), LNParams.broadcaster.perKwThreeSat, batch, batch.fundingAmountSat)
+          val cmd = CMDOpenChannel(localParams, ByteVector(random getBytes 32), ChannelManager.perKwThreeSat, batch, batch.fundingAmountSat)
           freshChannel process cmd
         }
 
@@ -151,9 +148,9 @@ class LNStartFundActivity extends TimerActivity { me =>
       def askLocalFundingConfirm = UITask {
         val content = getLayoutInflater.inflate(R.layout.frag_input_fiat_converter, null, false)
         val maxCap = MilliSatoshi(LNParams.maxCapacity.amount min app.kit.conf0Balance.value * 1000L)
-        val minCap = MilliSatoshi(LNParams.minCapacityMsat max LNParams.broadcaster.perKwThreeSat * 3 * 1000L)
-        val rateManager = new RateManager(content) hint getString(amount_hint_newchan).format(denom parsedWithSign minCap,
-          denom parsedWithSign LNParams.maxCapacity, denom parsedWithSign app.kit.conf0Balance)
+        val minCap = MilliSatoshi(LNParams.minCapacityMsat max ChannelManager.perKwThreeSat * 3 * 1000L)
+        val text = getString(amount_hint_newchan).format(denom parsedWithSign minCap, denom parsedWithSign LNParams.maxCapacity, denom parsedWithSign app.kit.conf0Balance)
+        val rateManager = new RateManager(content).hint(text)
 
         def askAttempt(alert: AlertDialog) = rateManager.result match {
           case Success(ms) if ms < minCap => app quickToast dialog_sum_small
@@ -184,8 +181,8 @@ class LNStartFundActivity extends TimerActivity { me =>
 
       override def onBecome = {
         case (_: NormalChannel, wait: WaitBroadcastRemoteData, WAIT_FOR_ACCEPT, WAIT_FUNDING_DONE) =>
-          // Preliminary negotiations are complete, save channel and wait for their funding tx
-          saveNormalChannel(freshChannel, wait)
+          // Preliminary negotiations are complete, channel is persisted, we wait for their funding tx
+          finalizeNormalSetup(freshChannel, wait)
           ConnectionManager.listeners -= this
       }
     }
@@ -205,11 +202,11 @@ class LNStartFundActivity extends TimerActivity { me =>
         if (app.kit.peerGroup.numConnectedPeers < 1) onException(freshChannel -> chainNotConnectedYet)
         else if (ChannelManager hasHostedChanWith nodeId) onException(freshChannel -> chanExistsAlready)
         else if (!isCompat) onException(freshChannel -> peerIncompatible)
-        else freshChannel.startUp
+        else freshChannel.process(CMDChainTipKnown, CMDSocketOnline)
       }
 
       override def onHostedMessage(ann1: NodeAnnouncement, message: HostedChannelMessage) =
-      // At this point hosted channel can only receive hosted messages or Error
+        // At this point hosted channel can only receive hosted messages or Error
         if (ann.nodeId == ann1.nodeId) freshChannel process message
 
       override def onMessage(nodeId: PublicKey, message: LightningMessage) = message match {

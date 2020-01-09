@@ -5,7 +5,6 @@ import scala.concurrent.duration._
 import com.lightning.walletapp.ln.wire._
 import scala.collection.JavaConverters._
 import com.lightning.walletapp.ln.Tools._
-import com.lightning.walletapp.ln.Features._
 import rx.lang.scala.{Subscription, Observable => Obs}
 import java.util.concurrent.{ConcurrentHashMap, Executors}
 import com.lightning.walletapp.ln.crypto.Noise.KeyPair
@@ -15,11 +14,11 @@ import java.net.Socket
 
 
 object ConnectionManager {
-  var listeners = Set.empty[ConnectionListener]
   val workers = new ConcurrentHashMap[PublicKey, Worker].asScala
   val keyPair = KeyPair(LNParams.keys.extendedNodeKey.publicKey.toBin,
     LNParams.keys.extendedNodeKey.privateKey.toBin)
 
+  var listeners = Set.empty[ConnectionListener]
   protected[this] val events = new ConnectionListener {
     override def onMessage(nodeId: PublicKey, msg: LightningMessage) = for (lst <- listeners) lst.onMessage(nodeId, msg)
     override def onHostedMessage(ann: NodeAnnouncement, msg: HostedChannelMessage) = for (lst <- listeners) lst.onHostedMessage(ann, msg)
@@ -41,9 +40,9 @@ object ConnectionManager {
     val handler: TransportHandler = new TransportHandler(keyPair, ann.nodeId) {
       def handleEncryptedOutgoingData(data: ByteVector) = try sock.getOutputStream write data.toArray catch handleError
       def handleDecryptedIncomingData(data: ByteVector) = Tuple2(LightningMessageCodecs deserialize data, ourLastPing) match {
-        case (init: Init, _) => events.onOperational(isCompat = isNodeSupported(init.localFeatures) && dataLossProtect(init.localFeatures), nodeId = ann.nodeId)
         case Ping(replyLength, _) \ _ if replyLength > 0 && replyLength <= 65532 => handler process Pong(ByteVector fromValidHex "00" * replyLength)
-        case Pong(randomData) \ Some(ourPing) if randomData.size == ourPing.pongLength => ourLastPing = None
+        case Pong(randomRemoteReplyData) \ Some(ourPing) if randomRemoteReplyData.size == ourPing.pongLength => ourLastPing = None
+        case Init(_, localFeatures) \ _ => events.onOperational(ann.nodeId, Features isNodeSupported localFeatures)
         case (message: HostedChannelMessage, _) => events.onHostedMessage(ann, message)
         case (message, _) => events.onMessage(ann.nodeId, message)
       }
