@@ -98,6 +98,8 @@
                 android:onClick="viewMnemonic"
                 android:paddingTop="25dp"/>
 
+            <View style="@style/GrayDivider"/>
+
             <TextView
                 style="@style/MarginInfo"
                 android:id="@+id/mnemonicInfo"
