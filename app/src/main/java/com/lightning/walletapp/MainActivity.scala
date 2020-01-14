@@ -4,18 +4,20 @@ import R.string._
 import android.widget._
 import com.lightning.walletapp.ln._
 import com.lightning.walletapp.Utils._
-import co.infinum.goldfinger.{Error => FPError}
+import android.content.{Context, Intent}
 import org.bitcoinj.core.{BlockChain, PeerGroup}
 import com.lightning.walletapp.ln.Tools.{none, runAnd}
+import android.net.{ConnectivityManager, NetworkCapabilities}
+import info.guardianproject.netcipher.proxy.{OrbotHelper, StatusCallback}
 import org.ndeftools.util.activity.NfcReaderActivity
 import org.bitcoinj.wallet.WalletProtobufSerializer
 import com.lightning.walletapp.helper.FingerPrint
 import co.infinum.goldfinger.Goldfinger
 import java.io.FileInputStream
-import android.content.Intent
 import org.ndeftools.Message
 import android.os.Bundle
 import android.view.View
+import scala.util.Try
 
 
 object MainActivity {
@@ -42,6 +44,11 @@ object MainActivity {
 }
 
 class MainActivity extends NfcReaderActivity with TimerActivity { me =>
+  lazy val takeOrbotAction = findViewById(R.id.takeOrbotAction).asInstanceOf[Button]
+  lazy val mainOrbotError = findViewById(R.id.mainOrbotError).asInstanceOf[TextView]
+  lazy val mainOrbotIssues = findViewById(R.id.mainOrbotIssues).asInstanceOf[View]
+  lazy val mainOrbot = findViewById(R.id.mainOrbot).asInstanceOf[View]
+
   lazy val mainFingerprintImage = findViewById(R.id.mainFingerprintImage).asInstanceOf[ImageView]
   lazy val mainFingerprint = findViewById(R.id.mainFingerprint).asInstanceOf[View]
   lazy val mainChoice = findViewById(R.id.mainChoice).asInstanceOf[View]
@@ -50,7 +57,7 @@ class MainActivity extends NfcReaderActivity with TimerActivity { me =>
   def INIT(state: Bundle) = {
     runAnd(me setContentView R.layout.activity_main)(me initNfc state)
     MainActivity.proceedOnSuccess = UITask { if (FingerPrint isOperational gf) proceedWithAuth else me exitTo MainActivity.wallet }
-    MainActivity.actOnError = { case reThrowToEnterEmergencyActivity => UITask { throw reThrowToEnterEmergencyActivity }.run }
+    MainActivity.actOnError = { case reThrowToEnterEmergencyActivity => UITask(throw reThrowToEnterEmergencyActivity).run }
     Utils clickableTextField findViewById(R.id.mainGreetings)
   }
 
@@ -76,12 +83,24 @@ class MainActivity extends NfcReaderActivity with TimerActivity { me =>
 
   // STARTUP LOGIC
 
+  def next = (app.walletFile.exists, app.isAlive) match {
+    case (false, _) => mainChoice setVisibility View.VISIBLE
+    case (true, true) => MainActivity.proceedOnSuccess.run
+
+    case (true, false) =>
+      MainActivity.prepareKit
+      // First load wallet files, then setup, then rest
+      LNParams setup app.kit.wallet.getKeyChainSeed.getSeedBytes
+      val ensureTor = app.prefs.getBoolean(AbstractKit.ENSURE_TOR, false)
+      if (ensureTor) ensureTorWorking else app.kit.startAsync
+  }
+
   def proceedWithAuth =
     gf authenticate new Goldfinger.Callback {
       mainFingerprint setVisibility View.VISIBLE
-      def onError(fpError: FPError) = fpError match {
-        case FPError.LOCKOUT => mainFingerprintImage.setAlpha(0.25F)
-        case FPError.CANCELED => mainFingerprintImage.setAlpha(0.25F)
+      def onError(fpError: co.infinum.goldfinger.Error) = fpError match {
+        case co.infinum.goldfinger.Error.LOCKOUT => mainFingerprintImage.setAlpha(0.25F)
+        case co.infinum.goldfinger.Error.CANCELED => mainFingerprintImage.setAlpha(0.25F)
         case _ => app quickToast fpError.toString
       }
 
@@ -89,20 +108,58 @@ class MainActivity extends NfcReaderActivity with TimerActivity { me =>
         mainFingerprint setVisibility View.GONE
         me exitTo MainActivity.wallet
       }
-  }
+    }
 
-  def next = (app.walletFile.exists, app.isAlive) match {
-    case (false, _) => mainChoice setVisibility View.VISIBLE
-    case (true, true) => MainActivity.proceedOnSuccess.run
+  def ensureTorWorking = {
+    val orbotHelper = OrbotHelper get app
+    lazy val orbotCallback = new StatusCallback {
+      def onEnabled(intent: Intent) = if (isVPNOn) app.kit.startAsync else onStatusTimeout
+      def onStatusTimeout = showIssue(orbot_err_unclear, orbot_action_open, closeAppExitOrbot).run
+      def onNotYetInstalled = showIssue(orbot_err_not_installed, orbot_action_install, closeAppInstallOrbot).run
+      def onStopping = onStatusTimeout
+      def onDisabled = none
+      def onStarting = none
+    }
 
-    case (true, false) =>
-      MainActivity.prepareKit
-      // First load wallet files, then init db, then init the rest
-      LNParams setup app.kit.wallet.getKeyChainSeed.getSeedBytes
-      app.kit.startAsync
+    def closeAppExitOrbot = {
+      val intent = getPackageManager getLaunchIntentForPackage OrbotHelper.ORBOT_PACKAGE_NAME
+      Option(intent) foreach startActivity
+      finishAffinity
+      System exit 0
+    }
+
+    def closeAppInstallOrbot = {
+      orbotHelper installOrbot me
+      finishAffinity
+      System exit 0
+    }
+
+    def showIssue(megRes: Int, btnRes: Int, whenTapped: => Unit) = UITask {
+      takeOrbotAction setOnClickListener onButtonTap(whenTapped)
+      mainOrbotIssues setVisibility View.VISIBLE
+      mainOrbot setVisibility View.GONE
+      takeOrbotAction setText btnRes
+      mainOrbotError setText megRes
+      timer.cancel
+    }
+
+    orbotHelper.addStatusCallback(orbotCallback)
+    try timer.schedule(orbotCallback.onStatusTimeout, 20000) catch none
+    try timer.schedule(mainOrbot setVisibility View.VISIBLE, 3000) catch none
+    if (!orbotHelper.init) orbotCallback.onNotYetInstalled
   }
 
   // MISC
+
+  def isVPNOn = Try {
+    val cm = getSystemService(Context.CONNECTIVITY_SERVICE).asInstanceOf[ConnectivityManager]
+    cm.getAllNetworks.exists(cm getNetworkCapabilities _ hasTransport NetworkCapabilities.TRANSPORT_VPN)
+  } getOrElse false
+
+  def skipOrbotCheck(view: View) = {
+    mainOrbotIssues setVisibility View.GONE
+    app.kit.startAsync
+  }
 
   def exitCreateWallet(view: View) = me exitTo classOf[WalletCreateActivity]
   def goRestoreWallet(view: View) = me exitTo classOf[WalletRestoreActivity]

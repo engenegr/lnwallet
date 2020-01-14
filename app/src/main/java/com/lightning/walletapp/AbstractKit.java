@@ -21,6 +21,7 @@ public abstract class AbstractKit extends AbstractIdleService {
     public static final String DENOM_TYPE = "denomType1";
     public static final String CAP_LN_FEES = "capLNFees";
     public static final String RATES_DATA = "ratesData";
+    public static final String ENSURE_TOR = "ensureTor";
     public static final String FIAT_TYPE = "fiatType1";
 
     // Bitcoin wallet core pieces

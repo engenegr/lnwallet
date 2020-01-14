@@ -37,8 +37,8 @@
 
     <LinearLayout
         style="@style/StandardLinearLayout"
-        android:id="@+id/mainFingerprint"
         android:background="@color/bgload"
+        android:id="@+id/mainFingerprint"
         android:visibility="gone">
 
         <ImageView
@@ -48,6 +48,52 @@
             android:layout_height="wrap_content"
             android:layout_width="wrap_content"
             android:layout_gravity="center"/>
+
+    </LinearLayout>
+
+    <LinearLayout
+        style="@style/StandardLinearLayout"
+        android:background="@color/bgload"
+        android:id="@+id/mainOrbot"
+        android:visibility="gone">
+
+        <TextView
+            style="@style/Info"
+            android:layout_marginBottom="45dp"
+            android:text="@string/orbot_status"
+            android:layout_width="wrap_content"/>
+
+    </LinearLayout>
+
+    <LinearLayout
+        style="@style/StandardLinearLayout"
+        android:background="@color/bgload"
+        android:id="@+id/mainOrbotIssues"
+        android:visibility="gone">
+
+        <TextView
+            style="@style/Info"
+            android:textColor="#E68A00"
+            android:id="@+id/mainOrbotError"
+            android:layout_marginBottom="45dp"
+            android:layout_width="wrap_content"/>
+
+        <Button
+            style="@style/Info"
+            android:id="@+id/takeOrbotAction"
+            android:layout_width="wrap_content"/>
+
+        <TextView
+            style="@style/Info"
+            android:text="&#8226;"
+            android:layout_margin="10dp"
+            android:layout_width="wrap_content"/>
+
+        <Button
+            style="@style/Info"
+            android:onClick="skipOrbotCheck"
+            android:layout_width="wrap_content"
+            android:text="@string/orbot_action_skip"/>
 
     </LinearLayout>
 </LinearLayout>
