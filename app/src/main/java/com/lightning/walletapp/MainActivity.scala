@@ -13,7 +13,6 @@ import org.ndeftools.util.activity.NfcReaderActivity
 import org.bitcoinj.wallet.WalletProtobufSerializer
 import com.lightning.walletapp.helper.FingerPrint
 import co.infinum.goldfinger.Goldfinger
-import java.io.FileInputStream
 import org.ndeftools.Message
 import android.os.Bundle
 import android.view.View
@@ -26,7 +25,7 @@ object MainActivity {
   val wallet = classOf[WalletActivity]
 
   lazy val prepareKit = {
-    val stream = new FileInputStream(app.walletFile)
+    val stream = new java.io.FileInputStream(app.walletFile)
     val proto = WalletProtobufSerializer parseToProto stream
 
     app.kit = new app.WalletKit {
@@ -45,7 +44,7 @@ object MainActivity {
 
 class MainActivity extends NfcReaderActivity with TimerActivity { me =>
   lazy val takeOrbotAction = findViewById(R.id.takeOrbotAction).asInstanceOf[Button]
-  lazy val mainOrbotError = findViewById(R.id.mainOrbotError).asInstanceOf[TextView]
+  lazy val mainOrbotMessage = findViewById(R.id.mainOrbotMessage).asInstanceOf[TextView]
   lazy val mainOrbotIssues = findViewById(R.id.mainOrbotIssues).asInstanceOf[View]
   lazy val mainOrbot = findViewById(R.id.mainOrbot).asInstanceOf[View]
 
@@ -95,21 +94,6 @@ class MainActivity extends NfcReaderActivity with TimerActivity { me =>
       if (ensureTor) ensureTorWorking else app.kit.startAsync
   }
 
-  def proceedWithAuth =
-    gf authenticate new Goldfinger.Callback {
-      mainFingerprint setVisibility View.VISIBLE
-      def onError(fpError: co.infinum.goldfinger.Error) = fpError match {
-        case co.infinum.goldfinger.Error.LOCKOUT => mainFingerprintImage.setAlpha(0.25F)
-        case co.infinum.goldfinger.Error.CANCELED => mainFingerprintImage.setAlpha(0.25F)
-        case _ => app quickToast fpError.toString
-      }
-
-      def onSuccess(cipherText: String) = {
-        mainFingerprint setVisibility View.GONE
-        me exitTo MainActivity.wallet
-      }
-    }
-
   def ensureTorWorking = {
     val orbotHelper = OrbotHelper get app
     lazy val orbotCallback = new StatusCallback {
@@ -134,20 +118,34 @@ class MainActivity extends NfcReaderActivity with TimerActivity { me =>
       System exit 0
     }
 
-    def showIssue(megRes: Int, btnRes: Int, whenTapped: => Unit) = UITask {
+    def showIssue(msgRes: Int, btnRes: Int, whenTapped: => Unit) = UITask {
       takeOrbotAction setOnClickListener onButtonTap(whenTapped)
       mainOrbotIssues setVisibility View.VISIBLE
       mainOrbot setVisibility View.GONE
+      mainOrbotMessage setText msgRes
       takeOrbotAction setText btnRes
-      mainOrbotError setText megRes
       timer.cancel
     }
 
-    orbotHelper.addStatusCallback(orbotCallback)
     try timer.schedule(orbotCallback.onStatusTimeout, 20000) catch none
     try timer.schedule(mainOrbot setVisibility View.VISIBLE, 3000) catch none
-    if (!orbotHelper.init) orbotCallback.onNotYetInstalled
+    orbotHelper.addStatusCallback(orbotCallback).init
   }
+
+  def proceedWithAuth =
+    gf authenticate new Goldfinger.Callback {
+      mainFingerprint setVisibility View.VISIBLE
+      def onError(fpError: co.infinum.goldfinger.Error) = fpError match {
+        case co.infinum.goldfinger.Error.LOCKOUT => mainFingerprintImage.setAlpha(0.25F)
+        case co.infinum.goldfinger.Error.CANCELED => mainFingerprintImage.setAlpha(0.25F)
+        case _ => app quickToast fpError.toString
+      }
+
+      def onSuccess(cipherText: String) = {
+        mainFingerprint setVisibility View.GONE
+        me exitTo MainActivity.wallet
+      }
+    }
 
   // MISC
 

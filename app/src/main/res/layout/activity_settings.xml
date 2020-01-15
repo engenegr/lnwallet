@@ -39,7 +39,6 @@
 
             <TextView
                 style="@style/BaseText"
-                android:textSize="14sp"
                 android:id="@+id/saveLocalBackupsPath"
                 android:layout_width="match_parent"
                 android:maxLines="1"/>
@@ -56,6 +55,21 @@
                 android:onClick="onFpTap"/>
 
             <View style="@style/GrayDivider"/>
+
+            <CheckBox
+                style="@style/RightCheckBox"
+                android:id="@+id/ensureTorRunning"
+                android:text="@string/sets_orbot"
+                android:onClick="onTorTap"/>
+
+            <TextView
+                style="@style/BaseText"
+                android:text="@string/sets_orbot_details"
+                android:layout_width="match_parent"/>
+
+            <View
+                style="@style/GrayDivider"
+                android:layout_marginTop="15dp"/>
 
             <CheckBox
                 style="@style/RightCheckBox"
@@ -80,13 +94,14 @@
 
             <TextView
                 style="@style/BaseText"
-                android:layout_marginBottom="15dp"
                 android:id="@+id/constrainLNFeesState"
                 android:layout_width="match_parent"/>
 
-            <!-- BUTTONS -->
+            <View
+                style="@style/GrayDivider"
+                android:layout_marginTop="15dp"/>
 
-            <View style="@style/GrayDivider"/>
+            <!-- BUTTONS -->
 
             <Button
                 style="@style/TransButton"

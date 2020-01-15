@@ -74,7 +74,7 @@
         <TextView
             style="@style/Info"
             android:textColor="#E68A00"
-            android:id="@+id/mainOrbotError"
+            android:id="@+id/mainOrbotMessage"
             android:layout_marginBottom="45dp"
             android:layout_width="wrap_content"/>
 

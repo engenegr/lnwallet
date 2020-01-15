@@ -32,6 +32,7 @@ class SettingsActivity extends TimerActivity with HumanTimeDisplay { me =>
   lazy val useTrustedNode = findViewById(R.id.useTrustedNode).asInstanceOf[CheckBox]
   lazy val saveLocalBackups = findViewById(R.id.saveLocalBackups).asInstanceOf[CheckBox]
   lazy val fpAuthentication = findViewById(R.id.fpAuthentication).asInstanceOf[CheckBox]
+  lazy val ensureTorRunning = findViewById(R.id.ensureTorRunning).asInstanceOf[CheckBox]
   lazy val constrainLNFees = findViewById(R.id.constrainLNFees).asInstanceOf[CheckBox]
 
   lazy val useTrustedNodeState = findViewById(R.id.useTrustedNodeState).asInstanceOf[TextView]
@@ -80,6 +81,8 @@ class SettingsActivity extends TimerActivity with HumanTimeDisplay { me =>
     case mode => FingerPrint switch mode
   }
 
+  def onTorTap(cb: View) = app.prefs.edit.putBoolean(AbstractKit.ENSURE_TOR, ensureTorRunning.isChecked).commit
+
   def onTrustedTap(cb: View) = {
     val title = getString(sets_trusted_title).html
     val content = getLayoutInflater.inflate(R.layout.frag_olympus_details, null, false)
@@ -89,7 +92,7 @@ class SettingsActivity extends TimerActivity with HumanTimeDisplay { me =>
     def addAttempt(alert: AlertDialog) = <(process(serverHostPort.getText.toString), onFail)(_ => alert.dismiss)
     alert setOnDismissListener new OnDismissListener { def onDismiss(some: DialogInterface) = updateTrustedView }
     content.findViewById(R.id.serverBackup).asInstanceOf[CheckBox] setVisibility View.GONE
-    app.kit.trustedNodeTry.foreach(serverHostPort setText _.toString)
+    app.kit.trustedNodeTry.foreach(tnt => serverHostPort setText tnt.toString)
     formatInputHint setText trusted_hint
 
     def process(rawText: String) = if (rawText.nonEmpty) {
@@ -116,6 +119,7 @@ class SettingsActivity extends TimerActivity with HumanTimeDisplay { me =>
     updateConstrainLNFeesView
     updateTrustedView
     updateBackupView
+    updateTorView
     updateFpView
 
     setFiatCurrency setOnClickListener onButtonTap {
@@ -197,7 +201,7 @@ class SettingsActivity extends TimerActivity with HumanTimeDisplay { me =>
         // Disconnect in case if we are already connected to target node
         // without doing this a channel reestablish won't be happening
         ConnectionManager.workers.values.foreach(_.disconnect)
-        
+
         for {
           chan <- ChannelManager.all if chan.state == REFUNDING
           // Try to connect right away and maybe use new address later
@@ -224,10 +228,8 @@ class SettingsActivity extends TimerActivity with HumanTimeDisplay { me =>
     saveLocalBackups setChecked canWrite
   }
 
-  def updateFpView = {
-    val isOperational = FingerPrint isOperational gf
-    fpAuthentication setChecked isOperational
-  }
+  def updateFpView = fpAuthentication setChecked FingerPrint.isOperational(gf)
+  def updateTorView = ensureTorRunning setChecked app.prefs.getBoolean(AbstractKit.ENSURE_TOR, false)
 
   def updateTrustedView = {
     val nodeAddressTry = app.kit.trustedNodeTry

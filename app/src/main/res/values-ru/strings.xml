@@ -17,6 +17,16 @@
     <string name="copied_to_clipboard">Скопировано</string>
     <string name="wallet_create">Новый кошелек</string>
 
+    <!-- orbot -->
+    <string name="sets_orbot">Проверять Tor при запуске</string>
+    <string name="sets_orbot_details">Убедиться что Tor запущен и работает прежде чем делать сетевые вызовы</string>
+    <string name="orbot_err_not_installed">Orbot не установлен, поэтому сейчас BLW не может использовать Tor</string>
+    <string name="orbot_err_unclear">Не получилось определить, может ли сейчас BLW использовать Tor</string>
+    <string name="orbot_action_install">Закрыть BLW и установить Orbort</string>
+    <string name="orbot_action_open">Закрыть BLW и открыть Orbot</string>
+    <string name="orbot_action_skip">Не использовать Tor</string>
+    <string name="orbot_status">Проверка Tor&#8230;</string>
+
     <array name="denoms">
         <item><![CDATA[Satoshi <font color=#999999><small>= 0.00000001 btc</small></font>]]></item>
         <item><![CDATA[Bitcoin <font color=#999999><small>= 100 000 000 sat</small></font>]]></item>
