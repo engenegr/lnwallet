@@ -1,3 +1,18 @@
+/*
+ * Copyright 2019 ACINQ SAS
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.lightning.walletapp.ln.crypto
 
 import scala.util.{Failure, Success, Try}
@@ -6,8 +21,9 @@ import com.lightning.walletapp.ln.wire.{FailureMessage, FailureMessageCodecs}
 import com.lightning.walletapp.ln.LightningException
 import fr.acinq.bitcoin.Protocol.Zeroes
 import com.lightning.walletapp.ln.wire
+
 import scala.annotation.tailrec
-import fr.acinq.bitcoin.Crypto
+import fr.acinq.bitcoin.{Crypto, Protocol}
 import scodec.bits.ByteVector
 import scodec.Attempt
 
@@ -194,19 +210,20 @@ object Sphinx {
       * @param associatedData     associated data.
       * @param ephemeralPublicKey ephemeral key shared with the target node.
       * @param sharedSecret       shared secret with this hop.
-      * @param packet             current packet (None if the packet hasn't been initialized).
+      * @param packet             current packet or random bytes if the packet hasn't been initialized.
       * @param onionPayloadFiller optional onion payload filler, needed only when you're constructing the last packet.
       * @return the next packet.
       */
-    def wrap(payload: ByteVector, associatedData: ByteVector, ephemeralPublicKey: PublicKey, sharedSecret: ByteVector, packet: Option[wire.OnionRoutingPacket], onionPayloadFiller: ByteVector = ByteVector.empty): wire.OnionRoutingPacket = {
+    def wrap(payload: ByteVector, associatedData: ByteVector, ephemeralPublicKey: PublicKey, sharedSecret: ByteVector, packet: Either[ByteVector, wire.OnionRoutingPacket], onionPayloadFiller: ByteVector = ByteVector.empty): wire.OnionRoutingPacket = {
       require(payload.length <= PayloadLength - MacLength, s"packet payload cannot exceed ${PayloadLength - MacLength} bytes")
 
       val (currentMac, currentPayload): (ByteVector, ByteVector) = packet match {
-        // Packet construction starts with an empty mac and payload.
-        case None => (Zeroes, ByteVector.fill(PayloadLength)(0))
-        case Some(p) => (p.hmac, p.payload)
+        // Packet construction starts with an empty mac and random payload.
+        case Left(startingBytes) =>
+          require(startingBytes.length == PayloadLength, "invalid initial random bytes length")
+          (Protocol.Zeroes, startingBytes)
+        case Right(p) => (p.hmac, p.payload)
       }
-
       val nextOnionPayload = {
         val onionPayload1 = payload ++ currentMac ++ currentPayload.dropRight(payload.length + MacLength)
         val onionPayload2 = onionPayload1 xor generateStream(generateKey("rho", sharedSecret), PayloadLength)
@@ -232,12 +249,14 @@ object Sphinx {
       val (ephemeralPublicKeys, sharedsecrets) = computeEphemeralPublicKeysAndSharedSecrets(sessionKey, publicKeys)
       val filler = generateFiller("rho", sharedsecrets.dropRight(1), payloads.dropRight(1))
 
-      val lastPacket = wrap(payloads.last, associatedData, ephemeralPublicKeys.last, sharedsecrets.last, None, filler)
+      // We deterministically-derive the initial payload bytes: see https://github.com/lightningnetwork/lightning-rfc/pull/697
+      val startingBytes = generateStream(generateKey("pad", sessionKey.value), PayloadLength)
+      val lastPacket = wrap(payloads.last, associatedData, ephemeralPublicKeys.last, sharedsecrets.last, Left(startingBytes), filler)
 
       @tailrec
       def loop(hopPayloads: Seq[ByteVector], ephKeys: Seq[PublicKey], sharedSecrets: Seq[ByteVector], packet: wire.OnionRoutingPacket): wire.OnionRoutingPacket = {
         if (hopPayloads.isEmpty) packet else {
-          val nextPacket = wrap(hopPayloads.last, associatedData, ephKeys.last, sharedSecrets.last, Some(packet))
+          val nextPacket = wrap(hopPayloads.last, associatedData, ephKeys.last, sharedSecrets.last, Right(packet))
           loop(hopPayloads.dropRight(1), ephKeys.dropRight(1), sharedSecrets.dropRight(1), nextPacket)
         }
       }
