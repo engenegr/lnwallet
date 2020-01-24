@@ -124,8 +124,19 @@ case class Hop(nodeId: PublicKey, shortChannelId: Long,
   def fee(amountMsat: Long) = feeBaseMsat + (feeProportionalMillionths * amountMsat) / 1000000L
 }
 
-case class QueryChannelRange(chainHash: ByteVector, firstBlockNum: Long, numberOfBlocks: Long) extends RoutingMessage
+sealed trait EncodingType
+
+object EncodingType {
+  case object UNCOMPRESSED extends EncodingType
+  case object COMPRESSED_ZLIB extends EncodingType
+}
+
+case class EncodedShortChannelIds(encoding: EncodingType, array: List[Long] = Nil)
 case class GossipTimestampFilter(chainHash: ByteVector, firstTimestamp: Long, timestampRange: Long) extends RoutingMessage
+case class QueryChannelRange(chainHash: ByteVector, firstBlockNum: Long, numberOfBlocks: Long, tlvStream: TlvStream[QueryChannelRangeTlv] = TlvStream.empty) extends RoutingMessage
+case class QueryShortChannelIds(chainHash: ByteVector, shortChannelIds: EncodedShortChannelIds, tlvStream: TlvStream[QueryShortChannelIdsTlv] = TlvStream.empty) extends RoutingMessage
+case class ReplyChannelRange(chainHash: ByteVector, firstBlockNum: Long, numberOfBlocks: Long, complete: Byte, shortChannelIds: EncodedShortChannelIds) extends RoutingMessage
+case class ReplyShortChannelIdsEnd(chainHash: ByteVector, complete: Byte) extends RoutingMessage
 
 // NODE ADDRESS HANDLING
 
