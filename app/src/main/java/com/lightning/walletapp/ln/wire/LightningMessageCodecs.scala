@@ -499,10 +499,16 @@ object LightningMessageCodecs { me =>
       channelUpdateWitness
   }.as[ChannelUpdate]
 
-  private val queryChannelRangeTlvCodec: Codec[TlvStream[QueryChannelRangeTlv]] = {
-    val queryFlagsCodec: Codec[QueryFlags] = (varintoverflow withContext "flag").as[QueryFlags]
-    val discriminator: Codec[QueryFlags] = variableSizeBytesLong(varintoverflow, queryFlagsCodec)
-    tlvStream(discriminated.by(varint).typecase(UInt64(1), discriminator))
+  val gossipTimestampFilterCodec = {
+    (bytes32 withContext "chainHash") ::
+      (uint32 withContext "firstTimestamp") ::
+      (uint32 withContext "timestampRange")
+  }.as[GossipTimestampFilter]
+
+  private val queryChannelRangeTlvCodec = {
+    val discriminator = variableSizeBytesLong(value = (varintoverflow withContext "flag").as[QueryFlags], size = varintoverflow)
+    val innerCodec: DiscriminatorCodec[QueryChannelRangeTlv, UInt64] = discriminated.by(varint).typecase(UInt64(1), discriminator)
+    tlvStream(innerCodec)
   }
 
   val queryChannelRangeCodec = {
@@ -512,31 +518,49 @@ object LightningMessageCodecs { me =>
       (queryChannelRangeTlvCodec withContext "tlvStream")
   }.as[QueryChannelRange]
 
-  private val shortChannelIdsCodec = {
-    val listOfShortChannelIds = list(int64)
-    val uncompressedIds = (provide[EncodingType](EncodingType.UNCOMPRESSED) :: listOfShortChannelIds).as[EncodedShortChannelIds]
-    val compressedIds = (provide[EncodingType](EncodingType.COMPRESSED_ZLIB) :: zlib(listOfShortChannelIds)).as[EncodedShortChannelIds]
+  private val replyChannelRangeTlvCodec = {
+    val timestampsCodec = {
+      (uint32 withContext "timestamp1") ::
+        (uint32 withContext "timestamp2")
+    }.as[Timestamps]
+
+    val checksumsCodec = {
+      (uint32 withContext "checksum1") ::
+        (uint32 withContext "checksum2")
+    }.as[Checksums]
+
+    val uncompressedTimestamps = (provide[EncodingType](EncodingType.UNCOMPRESSED) :: list(timestampsCodec)).as[EncodedTimestamps]
+    val compressedTimestamps = (provide[EncodingType](EncodingType.COMPRESSED_ZLIB) :: zlib(list(timestampsCodec))).as[EncodedTimestamps]
+
+    val discriminatedTimestamps = discriminated[EncodedTimestamps].by(byte)
+      .\(0) { case uncompressed @ EncodedTimestamps(EncodingType.UNCOMPRESSED, _) => uncompressed } (uncompressedTimestamps)
+      .\(1) { case compressed @ EncodedTimestamps(EncodingType.COMPRESSED_ZLIB, _) => compressed } (compressedTimestamps)
+
+    val encodedTimestampsCodec: Codec[EncodedTimestamps] = variableSizeBytesLong(value = discriminatedTimestamps, size = varintoverflow)
+    val encodedChecksumsCodec: Codec[EncodedChecksums] = variableSizeBytesLong(value = list(checksumsCodec), size = varintoverflow).as[EncodedChecksums]
+    val innerCodec: DiscriminatorCodec[ReplyChannelRangeTlv, UInt64] = discriminated[ReplyChannelRangeTlv].by(varint).typecase(UInt64(1), encodedTimestampsCodec).typecase(UInt64(3), encodedChecksumsCodec)
+    tlvStream(innerCodec)
+  }
+
+  private val discriminatedScidList = variableSizeBytes(value = {
+    val uncompressedIds = (provide[EncodingType](EncodingType.UNCOMPRESSED) :: list(int64)).as[EncodedShortChannelIds]
+    val compressedIds = (provide[EncodingType](EncodingType.COMPRESSED_ZLIB) :: zlib(list(int64))).as[EncodedShortChannelIds]
 
     discriminated[EncodedShortChannelIds].by(byte)
       .\(0) { case uncompressed @ EncodedShortChannelIds(EncodingType.UNCOMPRESSED, _) => uncompressed } (uncompressedIds)
       .\(1) { case compressed @ EncodedShortChannelIds(EncodingType.COMPRESSED_ZLIB, _) => compressed } (compressedIds)
-  }
+  }, size = uint16)
 
   val replyChannelRangeCodec = {
     (bytes32 withContext "chainHash") ::
       (uint32 withContext "firstBlockNum") ::
       (uint32 withContext "numberOfBlocks") ::
       (byte withContext "complete") ::
-      (variableSizeBytes(uint16, shortChannelIdsCodec) withContext "shortChannelIds")
+      (discriminatedScidList withContext "shortChannelIds") ::
+      (replyChannelRangeTlvCodec withContext "tlvStream")
   }.as[ReplyChannelRange]
 
-  val gossipTimestampFilterCodec = {
-    (bytes32 withContext "chainHash") ::
-      (uint32 withContext "firstTimestamp") ::
-      (uint32 withContext "timestampRange")
-  }.as[GossipTimestampFilter]
-
-  private val queryShortChannelIdsTlvCodec: Codec[TlvStream[QueryShortChannelIdsTlv]] = {
+  private val queryShortChannelIdsTlvCodec = {
     val uncompressedIds = (provide[EncodingType](EncodingType.UNCOMPRESSED) :: list(varintoverflow)).as[EncodedQueryFlags]
     val compressedIds = (provide[EncodingType](EncodingType.COMPRESSED_ZLIB) :: zlib(list(varintoverflow))).as[EncodedQueryFlags]
 
@@ -544,13 +568,14 @@ object LightningMessageCodecs { me =>
       .\(0) { case uncompressed @ EncodedQueryFlags(EncodingType.UNCOMPRESSED, _) => uncompressed } (uncompressedIds)
       .\(1) { case compressed @ EncodedQueryFlags(EncodingType.COMPRESSED_ZLIB, _) => compressed } (compressedIds)
 
-    val discriminator = variableSizeBytesLong(varintoverflow, encodedQueryFlagsCodec)
-    tlvStream(discriminated.by(varint).typecase(UInt64(1), discriminator))
+    val discriminator: Codec[EncodedQueryFlags] = variableSizeBytesLong(varintoverflow, encodedQueryFlagsCodec)
+    val innerCodec: DiscriminatorCodec[QueryShortChannelIdsTlv, UInt64] = discriminated.by(varint).typecase(UInt64(1), discriminator)
+    tlvStream(innerCodec)
   }
 
   val queryShortChannelIdsCodec = {
     (bytes32 withContext "chainHash") ::
-      (variableSizeBytes(uint16, shortChannelIdsCodec) withContext "shortChannelIds") ::
+      (discriminatedScidList withContext "shortChannelIds") ::
       (queryShortChannelIdsTlvCodec withContext "tlvStream")
   }.as[QueryShortChannelIds]
 
@@ -765,15 +790,19 @@ object QueryShortChannelIdsTlv {
 sealed trait QueryChannelRangeTlv extends Tlv
 
 case class QueryFlags(flag: Long) extends QueryChannelRangeTlv {
-  val wantTimestamps = QueryChannelRangeTlv.wantTimestamps(flag)
-  val wantChecksums = QueryChannelRangeTlv.wantChecksums(flag)
+  val wantTimestamps = (flag & QueryChannelRangeTlv.WANT_TIMESTAMPS) != 0
+  val wantChecksums = (flag & QueryChannelRangeTlv.WANT_CHECKSUMS) != 0
 }
 
 object QueryChannelRangeTlv {
-  def wantTimestamps(flag: Long) = (flag & WANT_TIMESTAMPS) != 0
-  def wantChecksums(flag: Long) = (flag & WANT_CHECKSUMS) != 0
-
   val WANT_TIMESTAMPS = 1L
   val WANT_CHECKSUMS = 2L
   val WANT_ALL = 1L | 2L
 }
+
+case class Checksums(checksum1: Long, checksum2: Long) // Checksums for nodes 1/2 or zeroes
+case class Timestamps(timestamp1: Long, timestamp2: Long) // Timestamps for nodes 1/2 or zeroes
+
+sealed trait ReplyChannelRangeTlv extends Tlv
+case class EncodedChecksums(checksums: List[Checksums] = Nil) extends ReplyChannelRangeTlv
+case class EncodedTimestamps(encoding: EncodingType, timestamps: List[Timestamps] = Nil) extends ReplyChannelRangeTlv

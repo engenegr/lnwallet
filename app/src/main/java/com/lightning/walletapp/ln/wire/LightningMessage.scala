@@ -135,8 +135,15 @@ case class EncodedShortChannelIds(encoding: EncodingType, array: List[Long] = Ni
 case class GossipTimestampFilter(chainHash: ByteVector, firstTimestamp: Long, timestampRange: Long) extends RoutingMessage
 case class QueryChannelRange(chainHash: ByteVector, firstBlockNum: Long, numberOfBlocks: Long, tlvStream: TlvStream[QueryChannelRangeTlv] = TlvStream.empty) extends RoutingMessage
 case class QueryShortChannelIds(chainHash: ByteVector, shortChannelIds: EncodedShortChannelIds, tlvStream: TlvStream[QueryShortChannelIdsTlv] = TlvStream.empty) extends RoutingMessage
-case class ReplyChannelRange(chainHash: ByteVector, firstBlockNum: Long, numberOfBlocks: Long, complete: Byte, shortChannelIds: EncodedShortChannelIds) extends RoutingMessage
 case class ReplyShortChannelIdsEnd(chainHash: ByteVector, complete: Byte) extends RoutingMessage
+
+case class ReplyChannelRange(chainHash: ByteVector, firstBlockNum: Long,
+                             numberOfBlocks: Long, complete: Byte, shortChannelIds: EncodedShortChannelIds,
+                             tlvStream: TlvStream[ReplyChannelRangeTlv] = TlvStream.empty) extends RoutingMessage {
+
+  val timestampsOpt = tlvStream.get[EncodedTimestamps]
+  val checksumsOpt = tlvStream.get[EncodedChecksums]
+}
 
 // NODE ADDRESS HANDLING
 
@@ -155,7 +162,6 @@ case class NodeAnnouncement(signature: ByteVector, features: ByteVector, timesta
     s"<strong>$ellipsized</strong><br><small>$pretty</small>"
   }
 
-  val identifier = (alias + nodeId.toString).toLowerCase
   lazy val hostedChanId = Tools.hostedChanId(LNParams.keys.extendedNodeKey.publicKey.toBin, nodeId.toBin)
   def unsafeFirstAddress = addresses.collectFirst(NodeAddress.toInetSocketAddress)
 }
@@ -261,11 +267,8 @@ case class LastCrossSignedState(refundScriptPubKey: ByteVector,
   def stateUpdate(isTerminal: Boolean) = StateUpdate(blockDay, localUpdates, remoteUpdates, localSigOfRemote, isTerminal)
 }
 
-case class StateUpdate(blockDay: Long, localUpdates: Long, remoteUpdates: Long,
-                       localSigOfRemoteLCSS: ByteVector, isTerminal: Boolean) extends HostedChannelMessage
-
-case class StateOverride(blockDay: Long, localBalanceMsat: Long, localUpdates: Long,
-                         remoteUpdates: Long, localSigOfRemoteLCSS: ByteVector) extends HostedChannelMessage
+case class StateUpdate(blockDay: Long, localUpdates: Long, remoteUpdates: Long, localSigOfRemoteLCSS: ByteVector, isTerminal: Boolean) extends HostedChannelMessage
+case class StateOverride(blockDay: Long, localBalanceMsat: Long, localUpdates: Long, remoteUpdates: Long, localSigOfRemoteLCSS: ByteVector) extends HostedChannelMessage
 
 // Not in a spec
 case class OutRequest(sat: Long, badNodes: Set[String], badChans: Set[Long], from: Set[String], to: String)
