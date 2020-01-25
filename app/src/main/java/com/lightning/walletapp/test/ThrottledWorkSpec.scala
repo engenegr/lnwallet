@@ -8,7 +8,7 @@ class ThrottledWorkSpec {
   def allTests = {
 
     val addWorker = new ThrottledWork[String, String] {
-      def work(input: String) = queue.map { _ =>
+      def work(input: String) = ioQueue.map { _ =>
         Thread.sleep(5000)
         input
       }
@@ -23,7 +23,7 @@ class ThrottledWorkSpec {
     addWorker.addWork("-- test")
 
     val replaceWorker = new ThrottledWork[String, String] {
-      def work(input: String) = queue.map { _ =>
+      def work(input: String) = ioQueue.map { _ =>
         Thread.sleep(5000)
         input
       }

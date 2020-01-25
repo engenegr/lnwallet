@@ -209,33 +209,33 @@ class LNStartFundActivity extends TimerActivity { me =>
       }
 
       override def onHostedMessage(ann1: NodeAnnouncement, message: HostedChannelMessage) =
-      // At this point hosted channel can only receive hosted messages or Error
+        // At this point hosted channel can only receive hosted messages or Error
         if (ann.nodeId == ann1.nodeId) freshChannel process message
 
       override def onMessage(nodeId: PublicKey, message: LightningMessage) = message match {
         case upd: ChannelUpdate if nodeId == ann.nodeId && upd.isHosted => freshChannel process upd
-        case error: Error if nodeId == ann.nodeId => freshChannel process error
-        case _ => super.onMessage(nodeId, message)
+        case remoteError: Error if nodeId == ann.nodeId => freshChannel process remoteError
+        case _ => // Disregard all other messages here
       }
     }
 
-    val openListener = mode match {
+    val channelOpenListener = mode match {
       case Right(secret) => new HostedClientOpenListener(secret)
       case Left(open :: _) => new RemoteOpenListener(open)
       case _ => new LocalOpenListener
     }
 
     whenBackPressed = UITask {
-      ConnectionManager.listeners -= openListener
-      openListener.freshChannel.listeners -= openListener
+      ConnectionManager.listeners -= channelOpenListener
+      channelOpenListener.freshChannel.listeners -= channelOpenListener
       // Worker may have already been removed on some connection failure
       // we need to disconnect here to not accumulate too many open sockets
       ConnectionManager.workers.get(ann.nodeId).foreach(_.disconnect)
       finish
     }
 
-    ConnectionManager.listeners += openListener
-    openListener.freshChannel.listeners += openListener
-    ConnectionManager.connectTo(ann, notify = true)
+    ConnectionManager.listeners += channelOpenListener
+    channelOpenListener.freshChannel.listeners += channelOpenListener
+    ConnectionManager.connectTo(ann, LNParams.keys.nodeKeyPair, notify = true)
   }
 }

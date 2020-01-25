@@ -89,7 +89,7 @@ case class ChannelReestablish(channelId: ByteVector, nextLocalCommitmentNumber: 
                               nextRemoteRevocationNumber: Long, yourLastPerCommitmentSecret: Option[Scalar],
                               myCurrentPerCommitmentPoint: Option[Point] = None) extends ChannelMessage
 
-// ROUTING MESSAGES: open channels never get these except for ChannelUpdate
+// ROUTING MESSAGES
 
 case class AnnouncementSignatures(channelId: ByteVector,
                                   shortChannelId: Long, nodeSignature: ByteVector,

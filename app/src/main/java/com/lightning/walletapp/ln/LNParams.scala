@@ -10,6 +10,7 @@ import com.lightning.walletapp.ln.RoutingInfoTag.PaymentRoute
 import com.lightning.walletapp.lnutils.olympus.OlympusWrap
 import com.lightning.walletapp.ln.LNParams.DepthAndDead
 import com.lightning.walletapp.ln.wire.NodeAnnouncement
+import com.lightning.walletapp.ln.crypto.Noise.KeyPair
 import com.lightning.walletapp.ChannelManager
 import com.lightning.walletapp.ln.Tools.Bytes
 import java.io.ByteArrayInputStream
@@ -80,6 +81,10 @@ class LightningNodeKeys(seed: Bytes) {
   // Cloud secret is used to encrypt Olympus data, cloud ID is used as identifier
   lazy val cloudSecret = sha256(extendedCloudKey.privateKey.toBin)
   lazy val cloudId = sha256(cloudSecret).toHex
+
+  def makeKeyPair(pk: PrivateKey) = KeyPair(pk.publicKey.toBin, pk.toBin)
+  lazy val nodeKeyPair = makeKeyPair(extendedNodeKey.privateKey)
+  lazy val randomKeyPair = makeKeyPair(Tools.randomPrivKey)
 
   def makeChanKeys(fundKey: PublicKey) = {
     val channelKeyPath: Vector[Long] = makeKeyPath(fundKey.hash160)

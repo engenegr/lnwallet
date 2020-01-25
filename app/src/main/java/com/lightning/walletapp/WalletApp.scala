@@ -219,9 +219,9 @@ object ChannelManager extends Broadcaster {
 
     override def onMessage(nodeId: PublicKey, msg: LightningMessage) = msg match {
       case channelUpdate: ChannelUpdate => fromNode(nodeId).foreach(_ process channelUpdate)
-      case nodeLevelError: Error if nodeLevelError.channelId == Zeroes => fromNode(nodeId).foreach(_ process nodeLevelError)
-      case cm: ChannelMessage => fromNode(nodeId).find(_.getCommits.map(_.channelId) contains cm.channelId).foreach(_ process cm)
-      case _ =>
+      case remoteNodeLevelError: Error if remoteNodeLevelError.channelId == Zeroes => fromNode(nodeId).foreach(_ process remoteNodeLevelError)
+      case chanMessage: ChannelMessage => fromNode(nodeId).find(_.getCommits.map(_.channelId) contains chanMessage.channelId).foreach(_ process chanMessage)
+      case _ => // Disregard all other messages here
     }
 
     override def onHostedMessage(ann: NodeAnnouncement, msg: HostedChannelMessage) =
@@ -229,8 +229,12 @@ object ChannelManager extends Broadcaster {
         .foreach(_ process msg)
 
     override def onDisconnect(nodeId: PublicKey) = {
-      fromNode(nodeId).foreach(_ process CMDSocketOffline)
-      Obs.just(null).delay(5.seconds).foreach(_ => initConnect)
+      // This may come from sync node which we have no chans with
+      // thus only attempt reconnection if we do have affected chans
+
+      val affectedChans = fromNode(nodeId)
+      affectedChans.foreach(_ process CMDSocketOffline)
+      if (affectedChans.nonEmpty) ioQueue.foreach(_ => initConnect)
     }
   }
 
@@ -333,8 +337,8 @@ object ChannelManager extends Broadcaster {
 
   def hasHostedChanWith(nodeId: PublicKey) = fromNode(nodeId).exists(_.isHosted)
   def hasNormalChanWith(nodeId: PublicKey) = fromNode(nodeId).exists(chan => isOpeningOrOperational(chan) && !chan.isHosted)
-  // We need to connect the rest of channels including special cases like REFUNDING normal channel and SUSPENDED hosted channel
-  def initConnect = for (chan <- all if chan.state != CLOSING) ConnectionManager.connectTo(chan.data.announce, notify = false)
+  // We need to connect to the rest of channels including special cases like REFUNDING normal channel and SUSPENDED hosted channel states
+  def initConnect = for (chan <- all if chan.state != CLOSING) ConnectionManager.connectTo(chan.data.announce, keys.nodeKeyPair, notify = false)
   def fromNode(nodeId: PublicKey) = for (chan <- all if chan.data.announce.nodeId == nodeId) yield chan
   def activeInFlightHashes = all.filter(isOperational).flatMap(_.inFlightHtlcs).map(_.add.paymentHash)
   def mostFundedChanOpt = all.filter(isOperational).sortBy(_.estCanSendMsat).lastOption

@@ -29,8 +29,7 @@ object JsonHttpUtils {
   def retry[T](obs: Obs[T], pick: (Throwable, Int) => Duration, times: Range) =
     obs.retryWhen(_.zipWith(Obs from times)(pick) flatMap Obs.timer)
 
-  def ioQueue = Obs just null subscribeOn IOScheduler.apply
-  def queue = Obs just null subscribeOn ComputationScheduler.apply
+  def ioQueue = Obs.just(null).subscribeOn(IOScheduler.apply)
   def to[T : JsonFormat](raw: String): T = raw.parseJson.convertTo[T]
   def pickInc(errorOrUnit: Any, next: Int) = next.seconds
 }

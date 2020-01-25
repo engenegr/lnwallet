@@ -17,8 +17,6 @@ import java.net.Socket
 object ConnectionManager {
   var listeners = Set.empty[ConnectionListener]
   val workers = new ConcurrentHashMap[PublicKey, Worker].asScala
-  val keyPair = KeyPair(LNParams.keys.extendedNodeKey.publicKey.toBin,
-    LNParams.keys.extendedNodeKey.privateKey.toBin)
 
   protected[this] val events = new ConnectionListener {
     override def onMessage(nodeId: PublicKey, msg: LightningMessage) = for (lst <- listeners) lst.onMessage(nodeId, msg)
@@ -27,12 +25,18 @@ object ConnectionManager {
     override def onDisconnect(nodeId: PublicKey) = for (lst <- listeners) lst.onDisconnect(nodeId)
   }
 
-  def connectTo(ann: NodeAnnouncement, notify: Boolean) = synchronized {
-    if (workers.get(ann.nodeId).isEmpty) workers(ann.nodeId) = new Worker(ann)
-    else if (notify) events.onOperational(ann.nodeId, isCompat = true)
+  def connectTo(ann: NodeAnnouncement, keyPair: KeyPair, notify: Boolean) = synchronized {
+    // We still need to reconnect in case if nodeAnnouncement is the same but keyPair is different
+    // reconnect is carried out by replacing a worker, note that an old one will trigger onDisconnect
+
+    workers get ann.nodeId match {
+      case None => workers(ann.nodeId) = Worker(ann, keyPair)
+      case Some(worker) if worker.keyPair != keyPair => workers(ann.nodeId) = Worker(ann, keyPair)
+      case Some(worker) => events.onOperational(worker.ann.nodeId, isCompat = true)
+    }
   }
 
-  class Worker(val ann: NodeAnnouncement, buffer: Bytes = new Bytes(1024), val sock: Socket = new Socket) {
+  case class Worker(ann: NodeAnnouncement, keyPair: KeyPair, buffer: Bytes = new Bytes(1024), sock: Socket = new Socket) {
     implicit val context: ExecutionContextExecutor = ExecutionContext fromExecutor Executors.newSingleThreadExecutor
     private var ourLastPing = Option.empty[Ping]
     private var pinging: Subscription = _

@@ -15,7 +15,7 @@ import com.lightning.walletapp.lnutils.ImplicitConversions._
 
 import scala.util.{Success, Try}
 import org.bitcoinj.core.{Block, FilteredBlock, Peer}
-import com.lightning.walletapp.lnutils.JsonHttpUtils.{queue, to}
+import com.lightning.walletapp.lnutils.JsonHttpUtils.{ioQueue, to}
 import com.lightning.walletapp.lnutils.IconGetter.{bigFont, scrWidth}
 import com.lightning.walletapp.lnutils.{LocalBackup, PaymentInfoWrap}
 import com.lightning.walletapp.ln.crypto.Sphinx.DecryptedFailurePacket
@@ -146,8 +146,8 @@ class WalletActivity extends NfcReaderActivity with ScanActivity { me =>
 
           override def onMessage(nodeId: PublicKey, message: LightningMessage) = message match {
             case upd: ChannelUpdate if nodeId == FragLNStart.defaultHostedNode.ann.nodeId && upd.isHosted => freshChannel process upd
-            case error: Error if nodeId == FragLNStart.defaultHostedNode.ann.nodeId => freshChannel process error
-            case _ => super.onMessage(nodeId, message)
+            case remoteError: Error if nodeId == FragLNStart.defaultHostedNode.ann.nodeId => freshChannel process remoteError
+            case _ => // Disregard all other messages here
           }
 
           override def onBecome = {
@@ -170,8 +170,8 @@ class WalletActivity extends NfcReaderActivity with ScanActivity { me =>
             ConnectionManager.listeners += hostedChanOpenListener
             freshChannel.listeners += hostedChanOpenListener
 
-            ConnectionManager.connectTo(FragLNStart.defaultHostedNode.ann, notify = true)
-            // Method may be called many times even if removed so guard with boolean condition
+            ConnectionManager.connectTo(FragLNStart.defaultHostedNode.ann, LNParams.keys.nodeKeyPair, notify = true)
+            // Method may be called many times even if removed from listener so guard it with boolean condition
             hasDefaultHosted = true
           }
         }
@@ -292,39 +292,36 @@ class WalletActivity extends NfcReaderActivity with ScanActivity { me =>
     app.TransData.value = data
   }
 
-  def initIncoming(incoming: IncomingChannelRequest) = {
-    val initialListener = new ConnectionListener { self =>
-      override def onDisconnect(nodeId: PublicKey) = ConnectionManager.listeners -= self
-      override def onOperational(nodeId: PublicKey, isCompatible: Boolean) = if (isCompatible) {
-        queue.map(_ => incoming.requestChannel.body).map(LNUrl.guardResponse).foreach(none, onCallFailed)
-      }
-
-      override def onMessage(nodeId: PublicKey, msg: LightningMessage) = msg match {
-        case open: OpenChannel if !open.channelFlags.isPublic => onOpenOffer(nodeId, open)
-        case _ => // Ignore anything else including public channel offers
-      }
-
-      override def onOpenOffer(nodeId: PublicKey, open: OpenChannel) = {
-        val incomingTip = app getString ln_ops_start_fund_incoming_channel
-        val hnv = HardcodedNodeView(incoming.ann, incomingTip)
-        me goLNStartFund IncomingChannelParams(hnv, open)
-        ConnectionManager.listeners -= self
-      }
-
-      def onCallFailed(err: Throwable) = {
-        ConnectionManager.listeners -= self
-        onFail(err)
-      }
-    }
-
+  def initIncoming(incoming: IncomingChannelRequest) =
     if (ChannelManager hasNormalChanWith incoming.ann.nodeId) {
       // TODO: remove this limitation once random shortId is merged
       me toast err_ln_chan_exists_already
     } else {
-      ConnectionManager.listeners += initialListener
-      ConnectionManager.connectTo(incoming.ann, notify = true)
+      ConnectionManager.listeners += new ConnectionListener { self =>
+        def onCallFailed(error: Throwable) = runAnd(me onFail error)(ConnectionManager.listeners -= self)
+        override def onDisconnect(nodeId: PublicKey) = if (nodeId == incoming.ann.nodeId) onCallFailed(new LightningException)
+
+        override def onOperational(nodeId: PublicKey, isCompat: Boolean) = if (nodeId == incoming.ann.nodeId) {
+          if (isCompat) ioQueue.map(_ => incoming.requestChannel.body).map(LNUrl.guardResponse).foreach(none, onCallFailed)
+          else onCallFailed(new LightningException)
+        }
+
+        override def onMessage(nodeId: PublicKey, remoteMessage: LightningMessage) = remoteMessage match {
+          case open: OpenChannel if nodeId == incoming.ann.nodeId && !open.channelFlags.isPublic => onOpenOffer(nodeId, open)
+          case _ => // Disregard all other messages here
+        }
+
+        override def onOpenOffer(nodeId: PublicKey, open: OpenChannel) = {
+          val incomingTip = app getString ln_ops_start_fund_incoming_channel
+          val hardcodedNodeView = HardcodedNodeView(incoming.ann, incomingTip)
+          me goLNStartFund IncomingChannelParams(hardcodedNodeView, open)
+          ConnectionManager.listeners -= self
+        }
+      }
+
+      // Note that we may already have a connection with this node so notify if we do
+      ConnectionManager.connectTo(incoming.ann, LNParams.keys.nodeKeyPair, notify = true)
     }
-  }
 
   def showLoginForm(lnUrl: LNUrl) = lnUrl.k1 foreach { k1 =>
     val linkingPrivKey = LNParams.keys.makeLinkingKey(lnUrl.uri.getHost)
@@ -340,7 +337,7 @@ class WalletActivity extends NfcReaderActivity with ScanActivity { me =>
       val sig = Tools.sign(dataToSign, linkingPrivKey)
       val secondLevelRequestUri = lnUrl.uri.buildUpon.appendQueryParameter("sig", sig.toHex).appendQueryParameter("key", linkingPubKey)
       val sslAwareSecondRequest = get(secondLevelRequestUri.build.toString, false).connectTimeout(15000).trustAllCerts.trustAllHosts
-      queue.map(_ => sslAwareSecondRequest.body).map(LNUrl.guardResponse).foreach(_ => onLoginSuccess.run, onFail)
+      ioQueue.map(_ => sslAwareSecondRequest.body).map(LNUrl.guardResponse).foreach(_ => onLoginSuccess.run, onFail)
       app quickToast ln_url_resolving
     }
 
@@ -378,7 +375,7 @@ class WalletActivity extends NfcReaderActivity with ScanActivity { me =>
         else if (withRoutes.isEmpty) showForm(negTextBuilder(dialog_ok, getString(ln_receive_6conf).html).create)
         else if (maxCanReceive.amount < 0L) showForm(negTextBuilder(dialog_ok, reserveUnspentWarning.html).create)
         else FragWallet.worker.receive(withRoutes, finalMaxCanReceiveCapped, MilliSatoshi(wr.minCanReceive), title, wr.defaultDescription) { rd =>
-          queue.map(_ => wr.requestWithdraw(lnUrl, rd.pr).body).map(LNUrl.guardResponse).foreach(none, onRequestFailed)
+          ioQueue.map(_ => wr.requestWithdraw(lnUrl, rd.pr).body).map(LNUrl.guardResponse).foreach(none, onRequestFailed)
           def onRequestFailed(response: Throwable) = wrap(PaymentInfoWrap failOnUI rd)(me onFail response)
         }
 

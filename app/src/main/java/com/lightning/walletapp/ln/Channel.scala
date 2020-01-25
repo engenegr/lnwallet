@@ -67,13 +67,6 @@ abstract class Channel(val isHosted: Boolean) extends StateMachine[ChannelData] 
     case _ => None
   }
 
-  def isUpdatable(upd: ChannelUpdate) =
-    getCommits.flatMap(_.updateOpt) forall { oldUpdate =>
-      val isDifferentShortId = oldUpdate.shortChannelId != upd.shortChannelId
-      val isOldUpdateRefresh = !isDifferentShortId && oldUpdate.timestamp < upd.timestamp
-      isDifferentShortId || isOldUpdateRefresh
-    }
-
   def RESOLVE(prevUpds: Traversable[LightningMessage], cs: Commitments) = {
     // New state is settled, we resolve remote updates from previous state which can be done once
     // by doing it this way we ensure it is not possible to resolve the same payment differently twice
@@ -108,7 +101,6 @@ abstract class Channel(val isHosted: Boolean) extends StateMachine[ChannelData] 
   def estCanSendMsat: Long
   def refundableMsat: Long
 
-  var waitingUpdate: Boolean = true
   var permanentOffline: Boolean = true
   var listeners: Set[ChannelListener] = _
   val events: ChannelListener = new ChannelListener {
@@ -275,10 +267,10 @@ abstract class NormalChannel extends Channel(isHosted = false) { me =>
       // OPEN MODE
 
 
-      // GUARD: due to timestamp filter the first update they send must be for our channel
-      case (norm: NormalData, upd: ChannelUpdate, OPEN | SLEEPING) if waitingUpdate && !upd.isHosted =>
-        if (me isUpdatable upd) data = me STORE norm.modify(_.commitments.updateOpt).setTo(upd.some)
-        waitingUpdate = false
+      case (norm: NormalData, upd: ChannelUpdate, OPEN | SLEEPING)
+        // GUARD: they have sent an update which does not have a ChannelAnnouncement
+        if !upd.isHosted && Announcements.checkSig(upd, norm.announce.nodeId) =>
+        data = me STORE norm.modify(_.commitments.updateOpt).setTo(upd.some)
 
 
       case (norm: NormalData, addHtlc: UpdateAddHtlc, OPEN) =>
@@ -918,9 +910,10 @@ abstract class HostedChannel extends Channel(isHosted = true) { me =>
         data = me STORE hc.copy(announce = newAnn)
 
 
-      case (hc: HostedCommits, upd: ChannelUpdate, OPEN | SLEEPING) if waitingUpdate && upd.isHosted =>
-        if (me isUpdatable upd) data = me STORE hc.copy(updateOpt = upd.some)
-        waitingUpdate = false
+      case (hc: HostedCommits, upd: ChannelUpdate, OPEN | SLEEPING)
+        // GUARD: they have sent an update which does not have a ChannelAnnouncement
+        if upd.isHosted && Announcements.checkSig(upd, hc.announce.nodeId) =>
+        data = me STORE hc.copy(updateOpt = upd.some)
 
 
       case (hc: HostedCommits, remoteError: Error, WAIT_FOR_ACCEPT | OPEN | SLEEPING) =>
@@ -946,8 +939,6 @@ abstract class HostedChannel extends Channel(isHosted = true) { me =>
         if (remoteOverride.blockDay < hc.lastCrossSignedState.blockDay) throw new LightningException("Provided override blockday from remote host is not acceptable")
         require(restoredLCSS.verifyRemoteSig(hc.announce.nodeId), "Provided override signature from remote host is wrong")
         BECOME(me STORE restoreCommits(restoredLCSS, hc.announce), OPEN) SEND restoredLCSS.stateUpdate(isTerminal = true)
-        // They may send a new StateUpdate right after overriding
-        waitingUpdate = true
 
 
       case (null, wait: WaitRemoteHostedReply, null) => super.become(wait, WAIT_FOR_INIT)

@@ -22,7 +22,7 @@ import com.lightning.walletapp.lnutils.ImplicitConversions._
 import com.lightning.walletapp.ln.wire.{ChannelReestablish, UpdateAddHtlc}
 import com.lightning.walletapp.ln.Tools.{none, random, runAnd, wrap}
 import com.lightning.walletapp.helper.{AES, ReactLoader, RichCursor}
-import com.lightning.walletapp.lnutils.JsonHttpUtils.{queue, to}
+import com.lightning.walletapp.lnutils.JsonHttpUtils.{ioQueue, to}
 import fr.acinq.bitcoin.{MilliSatoshi, MilliSatoshiLong}
 import android.database.{ContentObserver, Cursor}
 import org.bitcoinj.wallet.{SendRequest, Wallet}
@@ -655,7 +655,7 @@ class FragWalletWorker(val host: WalletActivity, frag: View) extends SearchBar w
           UITask(me doSendOffChain rd1).run
         }
 
-        queue.map(_ => payReq.requestFinal(ms).body)
+        ioQueue.map(_ => payReq.requestFinal(ms).body)
           .map(LNUrl.guardResponse).map(convert)
           .foreach(send, onFail)
       }

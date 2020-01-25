@@ -205,8 +205,8 @@ class SettingsActivity extends TimerActivity with HumanTimeDisplay { me =>
         for {
           chan <- ChannelManager.all if chan.state == REFUNDING
           // Try to connect right away and maybe use new address later
-          _ = ConnectionManager.connectTo(chan.data.announce, notify = false)
-          // Can call findNodes without `retry` wrapper because it gives `Obs.empty` on error
+          _ = ConnectionManager.connectTo(chan.data.announce, LNParams.keys.nodeKeyPair, notify = false)
+          // Can call findNodes without `retry` wrapper because it gives a harmless Obs.empty on error
           Vector(ann1 \ _, _*) <- LNParams.olympusWrap findNodes chan.data.announce.nodeId.toString
         } chan process ann1
       }
