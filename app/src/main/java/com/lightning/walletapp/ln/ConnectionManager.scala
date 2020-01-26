@@ -32,7 +32,7 @@ object ConnectionManager {
     workers get ann.nodeId match {
       case None => workers(ann.nodeId) = Worker(ann, keyPair)
       case Some(worker) if worker.keyPair != keyPair => workers(ann.nodeId) = Worker(ann, keyPair)
-      case Some(worker) => events.onOperational(worker.ann.nodeId, isCompat = true)
+      case Some(worker) => if (notify) events.onOperational(worker.ann.nodeId, isCompat = true)
     }
   }
 

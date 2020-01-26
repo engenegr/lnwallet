@@ -233,8 +233,8 @@ object ChannelManager extends Broadcaster {
       // thus only attempt reconnection if we do have affected chans
 
       val affectedChans = fromNode(nodeId)
-      affectedChans.foreach(_ process CMDSocketOffline)
-      if (affectedChans.nonEmpty) ioQueue.foreach(_ => initConnect)
+      affectedChans.foreach(affectedChan => affectedChan process CMDSocketOffline)
+      if (affectedChans.nonEmpty) ioQueue.delay(5.seconds).foreach(_ => initConnect)
     }
   }
 
