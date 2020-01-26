@@ -28,8 +28,8 @@
     <string name="orbot_status">Проверка Tor&#8230;</string>
 
     <array name="denoms">
-        <item><![CDATA[Satoshi <font color=#999999><small>= 0.00000001 btc</small></font>]]></item>
-        <item><![CDATA[Bitcoin <font color=#999999><small>= 100 000 000 sat</small></font>]]></item>
+        <item><![CDATA[sat <font color=#999999><small>= 0.00000001 btc</small></font>]]></item>
+        <item><![CDATA[btc <font color=#999999><small>= 100 000 000 sat</small></font>]]></item>
     </array>
 
     <string name="restore_when">Когда вы создали кошелек?\nНе менйяте дату если не уверены</string>
