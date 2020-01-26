@@ -521,3 +521,28 @@ object Vibrator {
     lastVibrated = System.currentTimeMillis
   }
 }
+
+object SyncManager {
+  val defaultHostedNode = HostedChannelRequest(s"03144fcc73cea41a002b2865f98190ab90e4ff58a2ce24d3870f5079081e42922d@5.9.83.143:9735", Some("BLW Den"), "00")
+  val lightningNa = app.mkNodeAnnouncement(PublicKey.fromValidHex("03baa70886d9200af0ffbd3f9e18d96008331c858456b16e3a9b41e735c6208fef"), NodeAddress.fromParts("45.20.67.1", 9735), "LIGHTNING")
+  val bitstampNa = app.mkNodeAnnouncement(PublicKey.fromValidHex("02a04446caa81636d60d63b066f2814cbd3a6b5c258e3172cbdded7a16e2cfff4c"), NodeAddress.fromParts("3.122.40.122", 9735), "Bitstamp")
+  val openNodeNa = app.mkNodeAnnouncement(PublicKey.fromValidHex("03abf6f44c355dec0d5aa155bdbdd6e0c8fefe318eff402de65c6eb2e1be55dc3e"), NodeAddress.fromParts("18.221.23.28", 9735), "OpenNode")
+  val bitrefillNa = app.mkNodeAnnouncement(PublicKey.fromValidHex("0254ff808f53b2f8c45e74b70430f336c6c76ba2f4af289f48d6086ae6e60462d3"), NodeAddress.fromParts("52.30.63.2", 9735), "Bitrefill")
+  val bitrefillTorNa = app.mkNodeAnnouncement(PublicKey.fromValidHex("030c3f19d742ca294a55c00376b3b355c3c90d61c6b6b39554dbc7ac19b141c14f"), NodeAddress.fromParts("52.50.244.44", 9735), "Bitrefill Tor")
+  val coinGateNa = app.mkNodeAnnouncement(PublicKey.fromValidHex("0242a4ae0c5bef18048fbecf995094b74bfb0f7391418d71ed394784373f41e4f3"), NodeAddress.fromParts("3.124.63.44", 9735), "CoinGate")
+  val liteGoNa = app.mkNodeAnnouncement(PublicKey.fromValidHex("029aee02904d4e419770b93c1b07aae2814a79032e23cafb4024cbea6fb71be106"), NodeAddress.fromParts("195.154.169.49", 9735), "LiteGo")
+  val acinqNa = app.mkNodeAnnouncement(PublicKey.fromValidHex("03864ef025fde8fb587d989186ce6a4a186895ee44a926bfc370e2c366597a3f8f"), NodeAddress.fromParts("34.239.230.56", 9735), "ACINQ")
+  val foldNa = app.mkNodeAnnouncement(PublicKey.fromValidHex("02816caed43171d3c9854e3b0ab2cf0c42be086ff1bd4005acc2a5f7db70d83774"), NodeAddress.fromParts("35.238.153.25", 9735), "Fold")
+
+  val liteGo = HardcodedNodeView(liteGoNa, "<i>litego.io</i>")
+  val acinq = HardcodedNodeView(acinqNa, "<i>strike.acinq.co</i>")
+  val bitrefill = HardcodedNodeView(bitrefillNa, "<i>bitrefill.com</i>")
+  val recommendedNodes = Vector(defaultHostedNode, acinq, bitrefill, liteGo)
+
+  val nodeMap = Map(
+    defaultHostedNode.ann.nodeId -> defaultHostedNode.ann, lightningNa.nodeId -> lightningNa,
+    bitstampNa.nodeId -> bitstampNa, openNodeNa.nodeId -> openNodeNa, bitrefillNa.nodeId -> bitrefillNa,
+    bitrefillTorNa.nodeId -> bitrefillTorNa, coinGateNa.nodeId -> coinGateNa, liteGoNa.nodeId -> liteGoNa,
+    acinqNa.nodeId -> acinqNa, foldNa.nodeId -> foldNa
+  )
+}

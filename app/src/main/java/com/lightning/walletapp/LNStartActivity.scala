@@ -66,19 +66,7 @@ class LNStartActivity extends ScanActivity { me =>
     }
 }
 
-object FragLNStart {
-  var fragment: FragLNStart = _
-  val defaultHostedNode = HostedChannelRequest(s"03144fcc73cea41a002b2865f98190ab90e4ff58a2ce24d3870f5079081e42922d@5.9.83.143:9735", Some("BLW Den"), "00")
-  val bitrefillNa = app.mkNodeAnnouncement(PublicKey.fromValidHex("030c3f19d742ca294a55c00376b3b355c3c90d61c6b6b39554dbc7ac19b141c14f"), NodeAddress.fromParts("52.50.244.44", 9735), "Bitrefill")
-  val liteGoNa = app.mkNodeAnnouncement(PublicKey.fromValidHex("029aee02904d4e419770b93c1b07aae2814a79032e23cafb4024cbea6fb71be106"), NodeAddress.fromParts("195.154.169.49", 9735), "LiteGo")
-  val acinqNa = app.mkNodeAnnouncement(PublicKey.fromValidHex("03864ef025fde8fb587d989186ce6a4a186895ee44a926bfc370e2c366597a3f8f"), NodeAddress.fromParts("34.239.230.56", 9735), "ACINQ")
-
-  val liteGo = HardcodedNodeView(liteGoNa, "<i>litego.io</i>")
-  val acinq = HardcodedNodeView(acinqNa, "<i>strike.acinq.co</i>")
-  val bitrefill = HardcodedNodeView(bitrefillNa, "<i>bitrefill.com</i>")
-  val recommendedNodes = Vector(defaultHostedNode, acinq, bitrefill, liteGo)
-}
-
+object FragLNStart { var fragment: FragLNStart = _ }
 class FragLNStart extends Fragment with SearchBar with HumanTimeDisplay { me =>
   lazy val host = me.getActivity.asInstanceOf[LNStartActivity]
   val startNodeText = app getString ln_ops_start_node_view
@@ -91,7 +79,7 @@ class FragLNStart extends Fragment with SearchBar with HumanTimeDisplay { me =>
 
     def process(userQuery: String, results: AnnounceChansNumVec) = {
       val remoteNodeViewWraps = for (remoteNodeInfo <- results) yield RemoteNodeView(remoteNodeInfo)
-      nodes = if (userQuery.isEmpty) FragLNStart.recommendedNodes ++ remoteNodeViewWraps else remoteNodeViewWraps
+      nodes = if (userQuery.isEmpty) SyncManager.recommendedNodes ++ remoteNodeViewWraps else remoteNodeViewWraps
       host.UITask(adapter.notifyDataSetChanged).run
     }
   }

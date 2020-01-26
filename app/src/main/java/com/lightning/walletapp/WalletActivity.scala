@@ -133,20 +133,20 @@ class WalletActivity extends NfcReaderActivity with ScanActivity { me =>
     val showTooltip = app.prefs.getBoolean(AbstractKit.SHOW_TOOLTIP, true)
 
     if (openAutoHostedChan) {
-      var hasDefaultHosted = ChannelManager.hasHostedChanWith(FragLNStart.defaultHostedNode.ann.nodeId)
+      var hasDefaultHosted = ChannelManager.hasHostedChanWith(SyncManager.defaultHostedNode.ann.nodeId)
       if (hasDefaultHosted) app.prefs.edit.putBoolean(AbstractKit.AUTO_HOSTED_CHAN, false).commit else {
         val refundScriptPubKey: ByteVector = ByteVector(ScriptBuilder.createOutputScript(app.kit.currentAddress).getProgram)
-        val waitData = WaitRemoteHostedReply(FragLNStart.defaultHostedNode.ann, refundScriptPubKey, FragLNStart.defaultHostedNode.secret)
+        val waitData = WaitRemoteHostedReply(SyncManager.defaultHostedNode.ann, refundScriptPubKey, SyncManager.defaultHostedNode.secret)
         val freshChannel = ChannelManager.createHostedChannel(Set.empty, waitData)
 
         lazy val hostedChanOpenListener = new ConnectionListener with ChannelListener {
-          override def onDisconnect(nodeId: PublicKey) = if (nodeId == FragLNStart.defaultHostedNode.ann.nodeId) detachAll(retryOnRestart = true)
-          override def onOperational(nodeId: PublicKey, isCompat: Boolean) = if (nodeId == FragLNStart.defaultHostedNode.ann.nodeId && isCompat) freshChannel.startUp
-          override def onHostedMessage(ann: NodeAnnouncement, message: HostedChannelMessage) = if (ann.nodeId == FragLNStart.defaultHostedNode.ann.nodeId) freshChannel process message
+          override def onDisconnect(nodeId: PublicKey) = if (nodeId == SyncManager.defaultHostedNode.ann.nodeId) detachAll(retryOnRestart = true)
+          override def onOperational(nodeId: PublicKey, isCompat: Boolean) = if (nodeId == SyncManager.defaultHostedNode.ann.nodeId && isCompat) freshChannel.startUp
+          override def onHostedMessage(ann: NodeAnnouncement, message: HostedChannelMessage) = if (ann.nodeId == SyncManager.defaultHostedNode.ann.nodeId) freshChannel process message
 
           override def onMessage(nodeId: PublicKey, message: LightningMessage) = message match {
-            case upd: ChannelUpdate if nodeId == FragLNStart.defaultHostedNode.ann.nodeId && upd.isHosted => freshChannel process upd
-            case remoteError: Error if nodeId == FragLNStart.defaultHostedNode.ann.nodeId => freshChannel process remoteError
+            case upd: ChannelUpdate if nodeId == SyncManager.defaultHostedNode.ann.nodeId && upd.isHosted => freshChannel process upd
+            case remoteError: Error if nodeId == SyncManager.defaultHostedNode.ann.nodeId => freshChannel process remoteError
             case _ => // Disregard all other messages here
           }
 
@@ -170,7 +170,7 @@ class WalletActivity extends NfcReaderActivity with ScanActivity { me =>
             ConnectionManager.listeners += hostedChanOpenListener
             freshChannel.listeners += hostedChanOpenListener
 
-            ConnectionManager.connectTo(FragLNStart.defaultHostedNode.ann, LNParams.keys.nodeKeyPair, notify = true)
+            ConnectionManager.connectTo(SyncManager.defaultHostedNode.ann, LNParams.keys.nodeKeyPair, notify = true)
             // Method may be called many times even if removed from listener so guard it with boolean condition
             hasDefaultHosted = true
           }
