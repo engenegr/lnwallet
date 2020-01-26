@@ -460,10 +460,10 @@ object LightningMessageCodecs { me =>
       (bytes withContext "unknownFields")
 
   private val channelAnnouncement =
-    (signature withContext "nodeSignature1") ::
-      (signature withContext "nodeSignature2") ::
-      (signature withContext "bitcoinSignature1") ::
-      (signature withContext "bitcoinSignature2") ::
+    (bytes(64) withContext "nodeSignature1") :: // Instead of `signature`
+      (bytes(64) withContext "nodeSignature2") :: // Instead of `signature`
+      (bytes(64) withContext "bitcoinSignature1") :: // Instead of `signature`
+      (bytes(64) withContext "bitcoinSignature2") :: // Instead of `signature`
       channelAnnouncementWitness
 
   val nodeAnnouncementWitness =
@@ -474,6 +474,11 @@ object LightningMessageCodecs { me =>
       (zeropaddedstring withContext "alias") ::
       (variableSizeBytes(value = list(nodeaddress), size = uint16) withContext "addresses") ::
       (bytes withContext "unknownFields")
+
+  val nodeAnnouncementCodec = {
+    (bytes(64) withContext "signature") :: // Instead of `signature`
+      nodeAnnouncementWitness
+  }.as[NodeAnnouncement]
 
   val channelUpdateWitness =
     (bytes32 withContext "chainHash") ::
@@ -489,13 +494,8 @@ object LightningMessageCodecs { me =>
           (bytes withContext "unknownFields")
       }
 
-  val nodeAnnouncementCodec = {
-    (signature withContext "signature") ::
-      nodeAnnouncementWitness
-  }.as[NodeAnnouncement]
-
   val channelUpdateCodec = {
-    (signature withContext "signature") ::
+    (bytes(64) withContext "signature") :: // Instead of `signature`
       channelUpdateWitness
   }.as[ChannelUpdate]
 
