@@ -10,6 +10,7 @@ import fr.acinq.eclair.UInt64
 import scodec.bits.ByteVector
 import java.util.concurrent.Executors
 import fr.acinq.bitcoin.Protocol.Zeroes
+import com.lightning.walletapp.ChannelManager
 import fr.acinq.bitcoin.ScriptFlags.STANDARD_SCRIPT_VERIFY_FLAGS
 import com.lightning.walletapp.ln.wire.LightningMessageCodecs.LNDirectionalMessage
 import com.lightning.walletapp.ln.crypto.{Generators, ShaChain, ShaHashesWithIndex}
@@ -37,6 +38,7 @@ object Channel {
   val REFUNDING = "REFUNDING"
   val CLOSING = "CLOSING"
 
+  implicit val context: ExecutionContextExecutor = ExecutionContext fromExecutor Executors.newSingleThreadExecutor
   def isOpeningOrOperational(chan: Channel) = isOperational(chan) || isOpening(chan)
   def isOpening(chan: Channel) = chan.data.isInstanceOf[WaitFundingDoneData]
 
@@ -58,7 +60,6 @@ object Channel {
 }
 
 abstract class Channel(val isHosted: Boolean) extends StateMachine[ChannelData] { me =>
-  implicit val context: ExecutionContextExecutor = ExecutionContext fromExecutor Executors.newSingleThreadExecutor
   def process(change: Any) = Future(me doProcess change) onFailure { case failure => events onException me -> failure }
 
   def getCommits: Option[Commitments] = data match {
@@ -302,7 +303,8 @@ abstract class NormalChannel extends Channel(isHosted = false) { me =>
         me UPDATA norm.copy(commitments = norm.commitments receiveFailMalformed fail)
 
 
-      case (norm: NormalData, routingData: RoutingData, OPEN) if isOperational(me) =>
+      case (norm: NormalData, routingData: RoutingData, OPEN)
+        if isOperational(me) && !ChannelManager.activeInFlightHashes.contains(routingData.pr.paymentHash) =>
         // We can send a new HTLC when channel is both operational and online
         val c1 \ updateAddHtlc = norm.commitments sendAdd routingData
         me UPDATA norm.copy(commitments = c1) SEND updateAddHtlc
@@ -810,7 +812,8 @@ abstract class HostedChannel extends Channel(isHosted = true) { me =>
         me UPDATA hc.receiveFailMalformed(fail)
 
 
-      case (hc: HostedCommits, routingData: RoutingData, OPEN) =>
+      case (hc: HostedCommits, routingData: RoutingData, OPEN)
+        if !ChannelManager.activeInFlightHashes.contains(routingData.pr.paymentHash)=>
         val hostedCommits1 \ updateAddHtlc = hc.sendAdd(routingData)
         me UPDATA hostedCommits1 SEND updateAddHtlc
         events outPaymentAccepted routingData

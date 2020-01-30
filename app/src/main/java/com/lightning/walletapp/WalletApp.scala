@@ -9,7 +9,6 @@ import com.lightning.walletapp.lnutils._
 import com.lightning.walletapp.ln.wire._
 import scala.collection.JavaConverters._
 import com.lightning.walletapp.ln.Tools._
-import com.lightning.walletapp.ln.Channel._
 import com.lightning.walletapp.ln.LNParams._
 import com.lightning.walletapp.ln.PaymentInfo._
 import com.lightning.walletapp.ln.crypto.Sphinx._
@@ -26,8 +25,10 @@ import fr.acinq.bitcoin.Crypto.{Point, PublicKey}
 import android.content.{ClipboardManager, Context, Intent}
 import com.lightning.walletapp.lnutils.olympus.{OlympusWrap, TxUploadAct}
 import android.app.{Application, NotificationChannel, NotificationManager}
-import com.lightning.walletapp.helper.{AwaitService, RichCursor, ThrottledWork}
 import com.lightning.walletapp.lnutils.JsonHttpUtils.{ioQueue, pickInc, retry}
+import com.lightning.walletapp.helper.{AwaitService, RichCursor, ThrottledWork}
+import com.lightning.walletapp.ln.Channel.{CLOSING, SLEEPING, OPEN, REFUNDING, isOperational, isOpeningOrOperational}
+
 import org.bitcoinj.net.discovery.MultiplexingDiscovery
 import concurrent.ExecutionContext.Implicits.global
 import java.util.concurrent.TimeUnit.MILLISECONDS
@@ -491,7 +492,6 @@ object ChannelManager extends Broadcaster {
 
   def sendEither(foeRD: FullOrEmptyRD, noRoutes: RoutingData => Unit): Unit = foeRD match {
     // Find a channel which can send an amount and belongs to a correct peer, not necessairly online
-    case Right(rd) if activeInFlightHashes contains rd.pr.paymentHash =>
     case Left(emptyRD) => noRoutes(emptyRD)
 
     case Right(rd) =>
