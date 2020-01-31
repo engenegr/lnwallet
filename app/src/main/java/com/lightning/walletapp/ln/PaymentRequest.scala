@@ -69,7 +69,7 @@ case class RoutingInfoTag(route: PaymentRoute) extends Tag {
 
 object RoutingInfoTag {
   def parse(data: Bytes) = {
-    val pubkey = ByteVector apply data.slice(0, 33)
+    val pubkey = ByteVector(data take 33)
     val shortChanId = uint64(data.slice(33, 33 + 8), BIG_ENDIAN)
     val feeBaseMsat = uint32(data.slice(33 + 8, 33 + 8 + 4), BIG_ENDIAN)
     val cltvExpiryDelta = uint16(data.slice(33 + 8 + 4 + 4, chunkLength), BIG_ENDIAN)
@@ -163,13 +163,10 @@ object PaymentRequest {
   val prefixes = Map(Block.RegtestGenesisBlock.hash -> "lnbcrt", Block.TestnetGenesisBlock.hash -> "lntb", Block.LivenetGenesisBlock.hash -> "lnbc")
 
   def apply(chain: ByteVector, amount: Option[MilliSatoshi], paymentHash: ByteVector,
-            privKey: PrivateKey, description: String, fallbackAddress: Option[String],
-            routes: PaymentRouteVec): PaymentRequest = {
+            privKey: PrivateKey, description: String, routes: PaymentRouteVec): PaymentRequest = {
 
-    val timestampSecs = System.currentTimeMillis / 1000L
-    val baseTags = Vector(DescriptionTag(description), cltvExpiryTag, PaymentHashTag(paymentHash), expiryTag)
-    val completeTags = routes.map(RoutingInfoTag.apply) ++ fallbackAddress.map(FallbackAddressTag.apply).toVector ++ baseTags
-    PaymentRequest(prefixes(chain), amount, timestampSecs, privKey.publicKey, completeTags, ByteVector.empty) sign privKey
+    val tags = Vector(DescriptionTag(description), cltvExpiryTag, PaymentHashTag(paymentHash), expiryTag) ++ routes.map(RoutingInfoTag.apply)
+    PaymentRequest(prefixes(chain), amount, System.currentTimeMillis / 1000L, privKey.publicKey, tags, ByteVector.empty) sign privKey
   }
 
   def long2Bits(value: Long) = {

@@ -147,11 +147,11 @@ object PaymentInfo {
 
   // Once mutually signed HTLCs are present we need to parse and fail/fulfill them
   def resolveHtlc(nodeSecret: PrivateKey, add: UpdateAddHtlc, bag: PaymentInfoBag, loop: Boolean) =
-  PaymentPacket.peel(nodeSecret, add.paymentHash, add.onionRoutingPacket) match {
-    case Left(bad) => CMDFailMalformedHtlc(add.id, bad.onionHash, bad.code)
-    case Right(pkt) if pkt.isLastPacket => doResolve(pkt, add, bag, loop)
-    case Right(pkt) => failHtlc(pkt, UnknownNextPeer, add)
-  }
+    PaymentPacket.peel(nodeSecret, add.paymentHash, add.onionRoutingPacket) match {
+      case Left(bad) => CMDFailMalformedHtlc(add.id, bad.onionHash, bad.code)
+      case Right(pkt) if pkt.isLastPacket => doResolve(pkt, add, bag, loop)
+      case Right(pkt) => failHtlc(pkt, UnknownNextPeer, add)
+    }
 
   def doResolve(pkt: DecryptedPacket, add: UpdateAddHtlc, bag: PaymentInfoBag, loop: Boolean) =
     (LightningMessageCodecs.finalPerHopPayloadCodec decode pkt.payload.bits, bag getPaymentInfo add.paymentHash) match {

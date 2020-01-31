@@ -82,20 +82,30 @@ class LightningNodeKeys(seed: Bytes) {
   lazy val cloudId = sha256(cloudSecret).toHex
 
   def makeChanKeys(fundKey: PublicKey) = {
-    val channelKeyPath: Vector[Long] = makeKeyPath(fundKey.hash160)
-    for (idx <- 1L to 5L) yield derivePrivateKey(extendedNodeKey, channelKeyPath :+ idx)
+    val channelKeyPath = makeKeyPath(material = fundKey.hash160)
+    def derive(idx: Long) = derivePrivateKey(extendedNodeKey, channelKeyPath :+ idx)
+    1L to 5L map derive
   }
 
-  def makeLinkingKey(domain: String): PrivateKey = {
+  def makeLinkingKey(domain: String) = {
     val pathMaterial = crypto.Mac32.hmac256(hashingKey, domain)
     val chain = hardened(138) +: makeKeyPath(pathMaterial)
     derivePrivateKey(master, chain).privateKey
   }
 
-  def makeKeyPath(material: ByteVector): Vector[Long] = {
+  def makeFakeKey(hash: ByteVector) = {
+    val chain = hardened(184) +: makeKeyPath(hash)
+    derivePrivateKey(master, chain).privateKey
+  }
+
+  def makeKeyPath(material: ByteVector) = {
     require(material.size > 15, "Material size must be at least 16")
     val stream = new ByteArrayInputStream(material.slice(0, 16).toArray)
-    Vector.fill(4)(Protocol.uint32(stream, ByteOrder.BIG_ENDIAN))
+    val long1 = Protocol.uint32(stream, ByteOrder.BIG_ENDIAN)
+    val long2 = Protocol.uint32(stream, ByteOrder.BIG_ENDIAN)
+    val long3 = Protocol.uint32(stream, ByteOrder.BIG_ENDIAN)
+    val long4 = Protocol.uint32(stream, ByteOrder.BIG_ENDIAN)
+    Vector(long1, long2, long3, long4)
   }
 }
 

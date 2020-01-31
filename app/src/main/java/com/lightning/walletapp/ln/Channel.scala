@@ -82,7 +82,7 @@ abstract class Channel(val isHosted: Boolean) extends StateMachine[ChannelData] 
     val resolves = prevUpds collect { case remoteAdd: UpdateAddHtlc =>
       // We don't want to receive a payment into a channel we have originally sent it from in an attempt to rebalance
       val isLoop = cs.localSpec.htlcs.exists(htlc => !htlc.incoming && htlc.add.paymentHash == remoteAdd.paymentHash)
-      resolveHtlc(LNParams.keys.extendedNodeKey.privateKey, remoteAdd, LNParams.bag, isLoop)
+      resolveHtlc(LNParams.keys.makeFakeKey(remoteAdd.paymentHash), remoteAdd, LNParams.bag, isLoop)
     }
 
     for (cmd <- resolves) me doProcess cmd

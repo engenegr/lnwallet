@@ -81,9 +81,13 @@ object PaymentInfoWrap extends PaymentInfoBag with ChannelListener { me =>
       rd.lastExpiry, NOCHANID)
   }
 
-  def recordRoutingDataWithPr(extraRoutes: Vector[PaymentRoute], amount: MilliSatoshi, preimage: ByteVector, description: String): RoutingData = {
-    val pr = PaymentRequest(chainHash, Some(amount), Crypto sha256 preimage, keys.extendedNodeKey.privateKey, description, fallbackAddress = None, extraRoutes)
-    val rd = app.emptyRD(pr, amount.toLong, useCache = true)
+  def recordRoutingDataWithPr(extraRoutes: Vector[PaymentRoute], amount: MilliSatoshi,
+                              preimage: ByteVector, description: String): RoutingData = {
+
+    val paymentHash = Crypto.sha256(preimage)
+    val fakeKey = LNParams.keys.makeFakeKey(paymentHash)
+    val pr = PaymentRequest(chainHash, Some(amount), paymentHash, fakeKey, description, extraRoutes)
+    val rd = app.emptyRD(pr, firstMsat = amount.toLong, useCache = true)
 
     db.change(PaymentTable.newVirtualSql, rd.queryText, pr.paymentHash)
     db.change(PaymentTable.newSql, pr.toJson, preimage, 1 /* incoming payment */, WAITING, System.currentTimeMillis,
