@@ -1,9 +1,6 @@
 Bitcoin Lightning Wallet
 ------------------------
 
-<a href="https://play.google.com/store/apps/details?id=com.lightning.walletapp"><img alt="Get it on Google Play" src="https://play.google.com/intl/en_us/badges/images/apps/en-play-badge.png" height="80pt"/></a>
-
-
 [<img src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png"
      alt="Get it on F-Droid"
      height="100">](https://f-droid.org/packages/com.lightning.walletapp/)
