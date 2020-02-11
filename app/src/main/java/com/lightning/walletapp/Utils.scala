@@ -56,7 +56,9 @@ object Utils {
   val fiatNames =
     Map("usd" -> "US Dollar", "eur" -> "Euro", "jpy" -> "Japanese Yen", "cny" -> "Chinese Yuan",
       "inr" -> "Indian Rupee", "ils" -> "Israeli Shekel", "cad" -> "Canadian Dollar", "rub" -> "Русский Рубль",
-      "brl" -> "Real Brasileiro", "czk" -> "Česká Koruna", "gbp" -> "Pound Sterling", "aud" -> "Australian Dollar")
+      "brl" -> "Real Brasileiro", "czk" -> "Česká Koruna", "gbp" -> "Pound Sterling", "aud" -> "Australian Dollar",
+      "vef" -> "Venezuelan Bolívar Fuerte", "mxn" -> "Mexican Peso", "sos" -> "Somali Shilling",
+      "uah" -> "Українська Гривня", "try" -> "Turkish Lira")
 
   val viewMap = Map(true -> View.VISIBLE, false -> View.GONE)
   def humanSix(bitcoinAddress: String) = bitcoinAddress.grouped(size = 6).mkString(sep = "\u0020")
