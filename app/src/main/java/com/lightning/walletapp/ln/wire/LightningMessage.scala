@@ -177,7 +177,7 @@ case class Domain(domain: String, port: Int) extends NodeAddress {
   def canBeUpdatedIfOffline = false
 }
 
-case object NodeAddress {
+case object NodeAddress { me =>
   val onionSuffix = ".onion"
   val V2Len = 16
   val V3Len = 56
@@ -190,14 +190,16 @@ case object NodeAddress {
     case Domain(site, port) => new InetSocketAddress(site, port)
   }
 
-  def fromParts(host: String, port: Int, orElse: (String, Int) => NodeAddress = resolveIp) =
-    if (host.endsWith(onionSuffix) && host.length == V2Len + onionSuffix.length) Tor2(host dropRight onionSuffix.length, port)
-    else if (host.endsWith(onionSuffix) && host.length == V3Len + onionSuffix.length) Tor3(host dropRight onionSuffix.length, port)
-    else orElse(host, port)
+  def onionKey(host: String) = host.dropRight(onionSuffix.length)
+  def isV2Onion(host: String) = host.endsWith(onionSuffix) && host.length == V2Len + onionSuffix.length
+  def isV3Onion(host: String) = host.endsWith(onionSuffix) && host.length == V3Len + onionSuffix.length
+
+  def fromParts(host: String, port: Int, orElse: (String, Int) => NodeAddress = resolveIp): NodeAddress =
+    if (me isV2Onion host) Tor2(onionKey(host), port) else if (me isV3Onion host) Tor3(onionKey(host), port) else orElse(host, port)
 
   def resolveIp(host: String, port: Int) = InetAddress getByName host match {
-    case inetVersion4Address: Inet4Address => IPv4(ipv4 = inetVersion4Address, port)
-    case inetVersion6Address: Inet6Address => IPv6(ipv6 = inetVersion6Address, port)
+    case inetV4Address: Inet4Address => IPv4(inetV4Address, port)
+    case inetV6Address: Inet6Address => IPv6(inetV6Address, port)
   }
 }
 
