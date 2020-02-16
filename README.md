@@ -8,6 +8,8 @@ Bitcoin Lightning Wallet
      alt="Get it on Google Play"
      height="100">](https://play.google.com/store/apps/details?id=com.lightning.walletapp)
 
+BLW is also awailable on Xiaomi Market and Huawei AppGallery.
+
 **Warning:** Do NOT install Bitcoin Lightning Wallet from any other location as it was not created by us and is likely fraudulent.
 
 
