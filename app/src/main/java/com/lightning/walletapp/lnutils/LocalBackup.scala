@@ -51,36 +51,12 @@ object LocalBackup {
   }
 
   def encryptAndWrite(file: File, channels: Vector[Channel], wallet: Wallet, secret: ByteVector) = {
-    // Collect siutable commitments data and calculate earliest watch timestamp for restored wallet
+    // Persist normal and hosted channels except those with RefundingData for which we don't have a remote point
+    val datas = channels.map(_.data).filter { case refund: RefundingData => refund.remoteLatestPoint.isDefined case _ => true }
 
-    // Everything except refunds for which we don't have points
-    val datas: Vector[ChannelData] = channels.map(_.data).filter {
-      case refund: RefundingData => refund.remoteLatestPoint.isDefined
-      case _ => true
-    }
-
-    val channelStampsMsec: Vector[Long] = datas.map {
-      case wd: WaitFundingDoneData => wd.commitments.startedAt
-      case closing: ClosingData => closing.closedAt
-      case _ => System.currentTimeMillis
-    }
-
-    // When no UTXO is present: current timestamp
-    // When UTXO timestamps are known: an oldest timestamp
-    // When UTXO is present but timestamps fail: wallet timestamp
-    val unspentUtxos = wallet.getUnspents.asScala.filter(_ isMine wallet)
-    val oldestUtxoStampMsec = if (unspentUtxos.isEmpty) System.currentTimeMillis else {
-      val minStampTry = Try(unspentUtxos.map(_.getParentTransaction.getUpdateTime.getTime).min)
-      minStampTry.getOrElse(wallet.getEarliestKeyCreationTime * 1000L)
-    }
-
-    // When no channel is present: current timestamp
-    val oldestChannelStampMsec = Try(channelStampsMsec.min).getOrElse(System.currentTimeMillis)
-    val oldestStampSecs = math.min(oldestUtxoStampMsec, oldestChannelStampMsec) / 1000L - 3600 * 24 * 7
-
-    val backup = (LocalBackups(Vector.empty, Vector.empty, oldestStampSecs, v = 1) /: datas) {
-      case (LocalBackups(normal, hosted, _, v), hasNorm: HasNormalCommits) => LocalBackups(normal :+ hasNorm, hosted, oldestStampSecs, v)
-      case (LocalBackups(normal, hosted, _, v), hostedCommits: HostedCommits) => LocalBackups(normal, hosted :+ hostedCommits, oldestStampSecs, v)
+    val backup = (LocalBackups(Vector.empty, Vector.empty, wallet.getEarliestKeyCreationTime, v = 1) /: datas) {
+      case (LocalBackups(normal, hosted, secs, v), hasNorm: HasNormalCommits) => LocalBackups(normal :+ hasNorm, hosted, secs, v)
+      case (LocalBackups(normal, hosted, secs, v), hostedCommits: HostedCommits) => LocalBackups(normal, hosted :+ hostedCommits, secs, v)
       case (updatedLocalBackups, _) => updatedLocalBackups
     }
 
