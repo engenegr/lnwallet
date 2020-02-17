@@ -167,16 +167,18 @@ object LNUrl {
   }
 
   def checkHost(host: String) = {
-    val isAcceptable = host.startsWith("https://") || NodeAddress.isV2Onion(host) || NodeAddress.isV3Onion(host)
-    require(isAcceptable, s"Provided URI=$host is neither HTTPS nor Onion request")
-    host
+    val uri = android.net.Uri.parse(host)
+    val isOnion = host.startsWith("http://") && uri.getHost.endsWith(NodeAddress.onionSuffix)
+    val isSSLPlain = host.startsWith("https://") && !uri.getHost.endsWith(NodeAddress.onionSuffix)
+    require(isSSLPlain || isOnion, "URI is neither Plain-HTTPS nor Onion-HTTP request")
+    uri
   }
 }
 
 case class LNUrl(request: String) {
   lazy val k1 = Try(uri getQueryParameter "k1")
   lazy val isLogin = Try(uri getQueryParameter "tag" equals "login").getOrElse(false)
-  val uri = android.net.Uri.parse(LNUrl checkHost request)
+  val uri = LNUrl.checkHost(request)
 }
 
 trait LNUrlData {
@@ -192,9 +194,9 @@ case class WithdrawRequest(callback: String, k1: String, maxWithdrawable: Long, 
   def requestWithdraw(lnUrl: LNUrl, pr: PaymentRequest) = unsafe(callbackUri.buildUpon.appendQueryParameter("pr", PaymentRequest write pr).appendQueryParameter("k1", k1).build.toString)
   override def checkAgainstParent(lnUrl: LNUrl) = lnUrl.uri.getHost == callbackUri.getHost
 
+  val callbackUri = LNUrl.checkHost(callback)
   val minCanReceive = minWithdrawable.getOrElse(LNParams.minPaymentMsat).max(LNParams.minPaymentMsat)
-  val callbackUri = android.net.Uri.parse(LNUrl checkHost callback)
-  require(minCanReceive <= maxWithdrawable)
+  require(minCanReceive <= maxWithdrawable, s"$minCanReceive is more than max $maxWithdrawable")
 }
 
 case class IncomingChannelRequest(uri: String, callback: String, k1: String) extends LNUrlData {
@@ -204,7 +206,7 @@ case class IncomingChannelRequest(uri: String, callback: String, k1: String) ext
   val pubKey = PublicKey(ByteVector fromValidHex nodeKey)
   val address = NodeAddress.fromParts(hostAddress, portNumber.toInt)
   val ann = app.mkNodeAnnouncement(pubKey, address, alias = hostAddress)
-  val callbackUri = android.net.Uri.parse(LNUrl checkHost callback)
+  val callbackUri = LNUrl.checkHost(callback)
 
   def requestChannel =
     unsafe(callbackUri.buildUpon.appendQueryParameter("private", "1").appendQueryParameter("k1", k1)
@@ -239,8 +241,8 @@ case class PayRequest(callback: String, maxSendable: Long, minSendable: Long, me
     decodedBitmap = BitmapFactory.decodeByteArray(imageByteArray, 0, imageByteArray.length)
   } yield decodedBitmap
 
+  val callbackUri = LNUrl.checkHost(callback)
   val minCanSend = minSendable max LNParams.minPaymentMsat
-  val callbackUri = android.net.Uri.parse(LNUrl checkHost callback)
   private val metaDataTexts = decodedMetadata.collect { case Vector("text/plain", content) => content }
   require(metaDataTexts.size == 1, "There must be exactly one text/plain entry in metadata")
   val metaDataTextPlain = metaDataTexts.head
