@@ -178,6 +178,7 @@ object LNUrl {
 case class LNUrl(request: String) {
   lazy val k1 = Try(uri getQueryParameter "k1")
   lazy val isLogin = Try(uri getQueryParameter "tag" equals "login").getOrElse(false)
+  lazy val isWithdraw = Try(uri getQueryParameter "tag" equals "withdrawRequest").getOrElse(false)
   val uri = LNUrl.checkHost(request)
 }
 
@@ -187,6 +188,16 @@ trait LNUrlData {
   def validate(lnUrl: LNUrl) = checkAgainstParent(lnUrl) match {
     case false => throw new Exception("Callback domain mismatch")
     case true => this
+  }
+}
+
+object WithdrawRequest {
+  def fromURI(uri: android.net.Uri) = {
+    val minWithdrawable = uri.getQueryParameter("minWithdrawable").toLong
+    val minWithdrawableOpt = Some(uri.getQueryParameter("minWithdrawable").toLong)
+    WithdrawRequest(callback = uri.getQueryParameter("callback"), k1 = uri.getQueryParameter("k1"),
+      maxWithdrawable = minWithdrawable, defaultDescription = uri.getQueryParameter("defaultDescription"),
+      minWithdrawable = minWithdrawableOpt)
   }
 }
 

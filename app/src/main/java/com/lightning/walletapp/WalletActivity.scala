@@ -257,7 +257,10 @@ class WalletActivity extends NfcReaderActivity with ScanActivity { me =>
       me returnToBase null
 
     case lnUrl: LNUrl =>
-      if (lnUrl.isLogin) showLoginForm(lnUrl)
+      if (lnUrl.isWithdraw) {
+        val withdrawRequest = WithdrawRequest.fromURI(lnUrl.uri)
+        me doReceivePayment Some(withdrawRequest, lnUrl)
+      } else if (lnUrl.isLogin) showLoginForm(lnUrl)
       else fetch1stLevelUrl(lnUrl)
       me returnToBase null
 
