@@ -193,10 +193,10 @@ trait LNUrlData {
 
 object WithdrawRequest {
   def fromURI(uri: android.net.Uri) = {
-    val minWithdrawable = uri.getQueryParameter("minWithdrawable").toLong
+    val maxWithdrawable = uri.getQueryParameter("maxWithdrawable").toLong
     val minWithdrawableOpt = Some(uri.getQueryParameter("minWithdrawable").toLong)
     WithdrawRequest(callback = uri.getQueryParameter("callback"), k1 = uri.getQueryParameter("k1"),
-      maxWithdrawable = minWithdrawable, defaultDescription = uri.getQueryParameter("defaultDescription"),
+      maxWithdrawable = maxWithdrawable, defaultDescription = uri.getQueryParameter("defaultDescription"),
       minWithdrawable = minWithdrawableOpt)
   }
 }
