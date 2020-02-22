@@ -177,7 +177,7 @@ object LNUrl {
 
 case class LNUrl(request: String) {
   lazy val k1 = Try(uri getQueryParameter "k1")
-  lazy val isLogin = Try(uri getQueryParameter "tag" equals "login").getOrElse(false)
+  lazy val isAuth = Try(uri getQueryParameter "tag" equals "login").getOrElse(false)
   lazy val isWithdraw = Try(uri getQueryParameter "tag" equals "withdrawRequest").getOrElse(false)
   val uri = LNUrl.checkHost(request)
 }
@@ -207,7 +207,7 @@ case class WithdrawRequest(callback: String, k1: String, maxWithdrawable: Long, 
 
   val callbackUri = LNUrl.checkHost(callback)
   val minCanReceive = minWithdrawable.getOrElse(LNParams.minPaymentMsat).max(LNParams.minPaymentMsat)
-  require(minCanReceive <= maxWithdrawable, s"$minCanReceive is more than max $maxWithdrawable")
+  require(minCanReceive <= maxWithdrawable, s"$maxWithdrawable is less than min $minCanReceive")
 }
 
 case class IncomingChannelRequest(uri: String, callback: String, k1: String) extends LNUrlData {
@@ -256,11 +256,11 @@ case class PayRequest(callback: String, maxSendable: Long, minSendable: Long, me
   val minCanSend = minSendable max LNParams.minPaymentMsat
   private val metaDataTexts = decodedMetadata.collect { case Vector("text/plain", content) => content }
   require(metaDataTexts.size == 1, "There must be exactly one text/plain entry in metadata")
+  require(minCanSend <= maxSendable, s"$maxSendable is less than min $minCanSend")
   val metaDataTextPlain = metaDataTexts.head
 
   override def checkAgainstParent(lnUrl: LNUrl) = lnUrl.uri.getHost == callbackUri.getHost
   def metaDataHash: ByteVector = Crypto.sha256(ByteVector view metadata.getBytes)
-  require(minCanSend <= maxSendable)
 
   def requestFinal(amount: MilliSatoshi, fromnodes: String = new String) =
     unsafe(callbackUri.buildUpon.appendQueryParameter("amount", amount.toLong.toString)
