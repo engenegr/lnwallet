@@ -146,35 +146,30 @@ case class NodeAnnouncement(signature: ByteVector, features: ByteVector, timesta
 
   val identifier = (alias + nodeId.toString).toLowerCase
   lazy val hostedChanId = Tools.hostedChanId(LNParams.keys.extendedNodeKey.publicKey.toBin, nodeId.toBin)
-  def unsafeFirstAddress = addresses.collectFirst(NodeAddress.toInetSocketAddress)
+  def firstAddress = scala.util.Try(NodeAddress toInetSocketAddress addresses.head)
 }
 
-sealed trait NodeAddress { def canBeUpdatedIfOffline: Boolean }
-case object Padding extends NodeAddress { def canBeUpdatedIfOffline = false }
+sealed trait NodeAddress
+case object Padding extends NodeAddress
 
 case class IPv4(ipv4: Inet4Address, port: Int) extends NodeAddress {
   override def toString: String = s"${ipv4.toString.tail}:$port"
-  def canBeUpdatedIfOffline = true
 }
 
 case class IPv6(ipv6: Inet6Address, port: Int) extends NodeAddress {
   override def toString: String = s"${ipv6.toString.tail}:$port"
-  def canBeUpdatedIfOffline = true
 }
 
 case class Tor2(tor2: String, port: Int) extends NodeAddress {
   override def toString: String = s"$tor2${NodeAddress.onionSuffix}:$port"
-  def canBeUpdatedIfOffline = false
 }
 
 case class Tor3(tor3: String, port: Int) extends NodeAddress {
   override def toString: String = s"$tor3${NodeAddress.onionSuffix}:$port"
-  def canBeUpdatedIfOffline = false
 }
 
 case class Domain(domain: String, port: Int) extends NodeAddress {
   override def toString: String = s"$domain:$port"
-  def canBeUpdatedIfOffline = false
 }
 
 case object NodeAddress {
@@ -199,6 +194,12 @@ case object NodeAddress {
     case inetV4Address: Inet4Address => IPv4(inetV4Address, port)
     case inetV6Address: Inet6Address => IPv6(inetV6Address, port)
   }
+
+  def canBeUpdated(old: NodeAnnouncement, fresh: NodeAnnouncement) =
+    Tuple2(old.addresses.headOption, fresh.addresses.headOption) match {
+      case Some(_: Tor2 | _: Tor3) \ Some(_: IPv4 | _: IPv6) => false
+      case _ \ freshAddress => freshAddress.isDefined
+    }
 }
 
 // Hosted channel messages

@@ -62,8 +62,8 @@ object ConnectionManager {
     }
 
     val thread = Future {
-      val theOne = ann.unsafeFirstAddress
-      sock.connect(theOne.get, 7500)
+      val workingAddress = ann.firstAddress.get
+      sock.connect(workingAddress, 7500)
       handler.init
 
       while (true) {

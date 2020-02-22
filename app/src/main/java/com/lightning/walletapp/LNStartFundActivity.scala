@@ -69,7 +69,7 @@ class LNStartFundActivity extends TimerActivity { me =>
   def proceed(mode: Either[List[OpenChannel], ByteVector], asString: String, ann: NodeAnnouncement): Unit = {
     val walletPubKeyScript = ByteVector(ScriptBuilder.createOutputScript(app.kit.currentAddress).getProgram)
 
-    val safeAddressOrAlias = Try(ann.unsafeFirstAddress.get.toString).toOption getOrElse ann.alias
+    val safeAddressOrAlias = ann.firstAddress.map(_.toString) getOrElse ann.alias
     val peerOffline = new LightningException(me getString err_ln_peer_offline format safeAddressOrAlias)
     val peerIncompatible = new LightningException(me getString err_ln_peer_incompatible format ann.alias)
     val chanExistsAlready = new LightningException(me getString err_ln_chan_exists_already)

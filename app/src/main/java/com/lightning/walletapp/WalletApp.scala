@@ -187,9 +187,9 @@ class WalletApp extends Application { me =>
       for {
         _ <- ioQueue delay 20.seconds
         offlineChannel <- ChannelManager.all
-        if offlineChannel.state != CLOSING && offlineChannel.permanentOffline // This channel is not closing and was never connected since an app has started
-        if offlineChannel.data.announce.addresses.headOption.forall(_.canBeUpdatedIfOffline) // Relevant for TOR channels: do not automatically convert them to clearnet!
+        if offlineChannel.state != CLOSING && offlineChannel.permanentOffline // This channel is not closing and has never been connected since an app start
         Vector(ann1 \ _, _*) <- olympusWrap findNodes offlineChannel.data.announce.nodeId.toString // No `retry` wrapper because this gives harmless `Obs.empty` on error
+        if NodeAddress.canBeUpdated(offlineChannel.data.announce, ann1) // Make sure previously used Tor address won't be changed to clearnet (to prevent autodoxing)
       } offlineChannel process ann1
 
       ConnectionManager.listeners += ChannelManager.socketEventsListener

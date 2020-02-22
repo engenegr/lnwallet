@@ -334,8 +334,8 @@ class WalletActivity extends NfcReaderActivity with ScanActivity { me =>
     val dataToSign = ByteVector.fromValidHex(k1)
 
     def wut(alert: AlertDialog): Unit = {
-      val bld = baseTextBuilder(getString(ln_url_info_login).format(lnUrl.uri.getHost, linkingPubKey).html)
-      mkCheckFormNeutral(_.dismiss, none, _ => me share linkingPubKey, bld, dialog_ok, -1, dialog_share)
+      val explanation = getString(ln_url_info_login).format(lnUrl.uri.getHost, Utils humanSix linkingPubKey).html
+      mkCheckFormNeutral(_.dismiss, none, _ => me share linkingPubKey, baseTextBuilder(explanation), dialog_ok, -1, dialog_share)
     }
 
     def doLogin(alert: AlertDialog) = rm(alert) {
