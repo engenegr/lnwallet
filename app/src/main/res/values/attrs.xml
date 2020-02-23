@@ -9,12 +9,6 @@
         <attr name="floatingSearch_searchInputTextSize" format="dimension"/>
         <attr name="floatingSearch_showMenuAction" format="boolean"/>
         <attr name="floatingSearch_dismissFocusOnItemSelection" format="boolean"/>
-        <attr name="floatingSearch_leftActionMode">
-            <enum name="showHamburger" value="1" />
-            <enum name="showSearch" value="2" />
-            <enum name="showHome" value="3" />
-            <enum name="noLeftAction" value="4" />
-        </attr>
         <attr name="floatingSearch_showVoiceInput" format="boolean"/>
         <attr name="floatingSearch_showSearchKey" format="boolean"/>
         <attr name="floatingSearch_voiceRecHint" format="string"/>
@@ -38,5 +32,15 @@
         <attr name="floatingSearch_dividerColor" format="color"/>
         <attr name="floatingSearch_dimBackground" format="boolean"/>
         <attr name="floatingSearch_suggestionRightIconColor" format="color"/>
+    </declare-styleable>
+
+    <declare-styleable name="DilatingDotsProgressBar">
+        <attr name="dd_scaleMultiplier" format="float"/>
+        <attr name="dd_animationDuration" format="integer"/>
+        <attr name="dd_horizontalSpacing" format="dimension"/>
+        <attr name="dd_numDots" format="integer"/>
+        <attr name="dd_endColor" format="color"/>
+        <attr name="android:radius"/>
+        <attr name="android:color"/>
     </declare-styleable>
 </resources>

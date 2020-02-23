@@ -77,10 +77,6 @@ public class FloatingSearchView extends FrameLayout {
     private final static long CLEAR_BTN_FADE_ANIM_DURATION = 500;
     private final static int CLEAR_BTN_WIDTH_DP = 48;
 
-    private final static int BACKGROUND_DRAWABLE_ALPHA_SEARCH_FOCUSED = 150;
-    private final static int BACKGROUND_DRAWABLE_ALPHA_SEARCH_NOT_FOCUSED = 0;
-    private final static int BACKGROUND_FADE_ANIM_DURATION = 250;
-
     private final static int MENU_ICON_ANIM_DURATION = 250;
 
     public final static int LEFT_ACTION_MODE_SHOW_HAMBURGER = 1;
@@ -101,7 +97,6 @@ public class FloatingSearchView extends FrameLayout {
     private final static boolean ATTRS_DISMISS_ON_KEYBOARD_DISMISS_DEFAULT = false;
     private final static boolean ATTRS_SEARCH_BAR_SHOW_SEARCH_KEY_DEFAULT = true;
     private final static int ATTRS_QUERY_TEXT_SIZE_SP_DEFAULT = 18;
-    private final static boolean ATTRS_SHOW_DIM_BACKGROUND_DEFAULT = true;
     private final static int ATTRS_SEARCH_BAR_MARGIN_DEFAULT = 0;
     private final static boolean ATTRS_DISMISS_FOCUS_ON_ITEM_SELECTION_DEFAULT = false;
 
@@ -125,8 +120,6 @@ public class FloatingSearchView extends FrameLayout {
     private String mOldQuery = "";
     private OnQueryChangeListener mQueryListener;
     private DrawerArrowDrawable mMenuBtnDrawable;
-    @LeftActionMode
-    int mLeftActionMode = LEFT_ACTION_MODE_NOT_SET;
     private int mLeftActionIconColor;
     private String mSearchHint;
     private boolean mShowSearchKey;
@@ -350,9 +343,6 @@ public class FloatingSearchView extends FrameLayout {
                     ATTRS_DISMISS_ON_OUTSIDE_TOUCH_DEFAULT));
             setDismissFocusOnItemSelection(a.getBoolean(R.styleable.FloatingSearchView_floatingSearch_dismissFocusOnItemSelection,
                     ATTRS_DISMISS_FOCUS_ON_ITEM_SELECTION_DEFAULT));
-            //noinspection ResourceType
-            mLeftActionMode = a.getInt(R.styleable.FloatingSearchView_floatingSearch_leftActionMode,
-                    ATTRS_SEARCH_BAR_LEFT_ACTION_MODE_DEFAULT);
             setBackgroundColor(a.getColor(R.styleable.FloatingSearchView_floatingSearch_backgroundColor
                     , Util.getColor(getContext(), R.color.background)));
             setLeftActionIconColor(a.getColor(R.styleable.FloatingSearchView_floatingSearch_leftActionColor
@@ -576,15 +566,6 @@ public class FloatingSearchView extends FrameLayout {
     }
 
     /**
-     * Set the mode for the left action button.
-     *
-     * @param mode
-     */
-    public void setLeftActionMode(@LeftActionMode int mode) {
-        mLeftActionMode = mode;
-    }
-
-    /**
      * Set a hint that will appear in the
      * search input. Default hint is R.string.abc_search_hint
      * which is "search..." (when device language is set to english)
@@ -723,7 +704,6 @@ public class FloatingSearchView extends FrameLayout {
         if (focused) {
             mSearchInput.requestFocus();
             handleOnVisibleMenuItemsWidthChanged(0);//this must be called before  mMenuView.hideIfRoomItems(...)
-            transitionInLeftSection(true);
             Util.showSoftKeyboard(getContext(), mSearchInput);
             if (mIsTitleSet) {
                 mSkipTextChangeEvent = true;
@@ -740,7 +720,6 @@ public class FloatingSearchView extends FrameLayout {
         } else {
             mMainLayout.requestFocus();
             handleOnVisibleMenuItemsWidthChanged(0);//this must be called before  mMenuView.hideIfRoomItems(...)
-            transitionOutLeftSection(true);
             mClearButton.setVisibility(View.GONE);
             if (mHostActivity != null) {
                 Util.closeSoftKeyboard(mHostActivity);
@@ -763,38 +742,6 @@ public class FloatingSearchView extends FrameLayout {
             fadeInVoiceInputOrClear.start();
         } else {
             imageView.setAlpha(1.0f);
-        }
-    }
-
-    private void transitionInLeftSection(boolean withAnim) {
-
-        switch (mLeftActionMode) {
-            case LEFT_ACTION_MODE_SHOW_HAMBURGER:
-                openMenuDrawable(mMenuBtnDrawable, withAnim);
-                break;
-            case LEFT_ACTION_MODE_SHOW_SEARCH:
-                break;
-            case LEFT_ACTION_MODE_SHOW_HOME:
-                //do nothing
-                break;
-            case LEFT_ACTION_MODE_NO_LEFT_ACTION:
-                break;
-        }
-    }
-
-    private void transitionOutLeftSection(boolean withAnim) {
-
-        switch (mLeftActionMode) {
-            case LEFT_ACTION_MODE_SHOW_HAMBURGER:
-                closeMenuDrawable(mMenuBtnDrawable, withAnim);
-                break;
-            case LEFT_ACTION_MODE_SHOW_SEARCH:
-                break;
-            case LEFT_ACTION_MODE_SHOW_HOME:
-                //do nothing
-                break;
-            case LEFT_ACTION_MODE_NO_LEFT_ACTION:
-                break;
         }
     }
 
@@ -902,7 +849,6 @@ public class FloatingSearchView extends FrameLayout {
         savedState.searchHintTextColor = mSearchInputHintColor;
         savedState.leftIconColor = mLeftActionIconColor;
         savedState.clearBtnColor = mClearBtnColor;
-        savedState.leftActionMode = mLeftActionMode;
         savedState.queryTextSize = mQueryTextSize;
         savedState.dismissOnSoftKeyboardDismiss = mDismissOnOutsideTouch;
         savedState.dismissFocusOnSuggestionItemClick = mDismissFocusOnItemSelection;
@@ -926,7 +872,6 @@ public class FloatingSearchView extends FrameLayout {
         setHintTextColor(savedState.searchHintTextColor);
         setLeftActionIconColor(savedState.leftIconColor);
         setClearBtnColor(savedState.clearBtnColor);
-        setLeftActionMode(savedState.leftActionMode);
         setCloseSearchOnKeyboardDismiss(savedState.dismissOnSoftKeyboardDismiss);
         setDismissFocusOnItemSelection(savedState.dismissFocusOnSuggestionItemClick);
 
