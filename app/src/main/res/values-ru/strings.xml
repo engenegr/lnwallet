@@ -320,8 +320,8 @@
     <string name="ln_ops_start_fund_incoming_channel">входящий канал</string>
     <string name="ln_ops_start_fund_hosted_channel">HOSTED-КАНАЛ</string>
 
+    <string name="ln_url_payment_sending">Oтправка %1$s</string>
     <string name="ln_url_resolving">Подключение к сервису&#8230;</string>
-    <string name="ln_url_payment_request_processing">Платеж отправляется&#8230;</string>
     <string name="ln_url_login_ok"><![CDATA[Успешный логин на <i>%1$s</i>]]></string>
     <string name="ln_url_info_login"><![CDATA[Логин-ключ для <i>%1$s</i> сгенерированный вашим кошельком:<br><br><strong>%2$s</strong><br><br>Он будет использован для анонимной авторизации на <i>%1$s</i> без раскрытия ваших личных данных.]]></string>
     <string name="ln_url_pay_decrypt_fail">Не удалось расшифровать сообщение, пожалуйста, свяжитесь с продавцом для решения проблемы.</string>

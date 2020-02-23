@@ -425,7 +425,7 @@ class FragWalletWorker(val host: WalletActivity, frag: View) extends SearchBar w
           showForm(negBuilder(dialog_ok, title.html, detailsWrapper).create)
 
         case 0 \ _ if info.status == FAILURE =>
-          val newRD = app.emptyRD(info.pr, info.firstMsat, useCache = false).copy(action = info.pd.action)
+          val newRD = app.emptyRD(info.pr, info.firstMsat, useCache = false).copy(description = info.pd)
           // This payment has been tried and failed, allow to retry this one unless its payment request has expired already
           val show = mkCheckForm(_.dismiss, doSendOffChain(newRD), baseBuilder(outgoingTitle.html, detailsWrapper), dialog_ok, _: Int)
           if (info.pr.isFresh) show(dialog_retry) else show(-1)
@@ -607,7 +607,7 @@ class FragWalletWorker(val host: WalletActivity, frag: View) extends SearchBar w
         doSendOffChain(rd1)
       }
 
-      pr.fallbackAddress -> pr.amount match {
+      Tuple2(pr.fallbackAddress, pr.amount) match {
         case Some(adr) \ Some(amount) if amount > maxCanSend && amount < app.kit.conf0Balance =>
           def sendOnChain: Unit = sendBtcPopup(app.TransData toBitcoinUri adr) setSum Try(amount)
           val failureMsg = app getString err_ln_not_enough format s"<strong>${denom parsedWithSign amount}</strong>"
@@ -637,7 +637,8 @@ class FragWalletWorker(val host: WalletActivity, frag: View) extends SearchBar w
       }
 
       def onUserAcceptSend(ms: MilliSatoshi) = {
-        host toast ln_url_payment_request_processing
+        val sending = app.getString(ln_url_payment_sending)
+        host toast sending.format(denom parsedWithSign ms)
 
         def convert(raw: String) = {
           val prf = to[PayRequestFinal](raw)
@@ -650,8 +651,9 @@ class FragWalletWorker(val host: WalletActivity, frag: View) extends SearchBar w
         }
 
         def send(prf: PayRequestFinal) = {
+          val pd = PaymentDescription(prf.successAction, payReq.metaDataTextPlain)
           val rd = app.emptyRD(prf.paymentRequest, firstMsat = ms.toLong, useCache = true)
-          val rd1 = rd.copy(action = prf.successAction, airLeft = ChannelManager.all count isOperational)
+          val rd1 = rd.copy(description = pd, airLeft = ChannelManager.all count isOperational)
           UITask(me doSendOffChain rd1).run
         }
 

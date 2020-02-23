@@ -346,7 +346,7 @@ class LNOpsActivity extends TimerActivity with HumanTimeDisplay { me =>
   }
 
   override def onOptionsItemSelected(m: MenuItem) = {
-    if (m.getItemId == R.id.actionAddNodeId) me share LNParams.keys.extendedNodeKey.publicKey.toString
+    if (m.getItemId == R.id.actionAddNodeId) share(LNParams.keys.extendedNodeKey.publicKey.toString)
     else if (m.getItemId == R.id.actionDrainHosted) drainHostedChan
     true
   }

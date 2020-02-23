@@ -77,8 +77,7 @@ object PaymentInfoWrap extends PaymentInfoBag with ChannelListener { me =>
   def insertOrUpdateOutgoingPayment(rd: RoutingData) = db txWrap {
     db.change(PaymentTable.updLastParamsOutgoingSql, rd.firstMsat, rd.lastMsat, rd.lastExpiry, rd.pr.paymentHash)
     db.change(PaymentTable.newSql, rd.pr.toJson, NOIMAGE, 0 /* outgoing payment */, WAITING, System.currentTimeMillis,
-      PaymentDescription(rd.action, rd.pr.description).toJson, rd.pr.paymentHash, rd.firstMsat, rd.lastMsat,
-      rd.lastExpiry, NOCHANID)
+      rd.description.toJson, rd.pr.paymentHash, rd.firstMsat, rd.lastMsat, rd.lastExpiry, NOCHANID)
   }
 
   def recordRoutingDataWithPr(extraRoutes: Vector[PaymentRoute], amount: MilliSatoshi,

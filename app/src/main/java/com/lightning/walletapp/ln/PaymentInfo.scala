@@ -170,7 +170,7 @@ case class RoutingData(pr: PaymentRequest, routes: PaymentRouteVec, usedRoute: P
                        onion: PacketAndSecrets, firstMsat: Long /* amount without off-chain fee */ ,
                        lastMsat: Long /* amount with off-chain fee added */ , lastExpiry: Long, callsLeft: Int,
                        useCache: Boolean, airLeft: Int, capFeeByOnChain: Boolean, expensiveScids: Vector[Long],
-                       action: Option[PaymentAction], fromHostedOnly: Boolean) {
+                       description: PaymentDescription, fromHostedOnly: Boolean) {
 
   // Empty used route means we're sending to peer and its nodeId should be our targetId
   def nextNodeId(route: PaymentRoute) = route.headOption.map(_.nodeId) getOrElse pr.nodeId
