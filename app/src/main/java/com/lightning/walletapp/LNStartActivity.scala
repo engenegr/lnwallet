@@ -267,8 +267,9 @@ case class PayRequest(callback: String, maxSendable: Long, minSendable: Long, me
       .appendQueryParameter("fromnodes", fromnodes).build.toString)
 }
 
-case class PayRequestFinal(successAction: Option[PaymentAction], routes: Vector[Route], pr: String) extends LNUrlData {
+case class PayRequestFinal(successAction: Option[PaymentAction], disposable: Option[Boolean], routes: Vector[Route], pr: String) extends LNUrlData {
   for (route <- routes) for (nodeId \ update <- route) require(Announcements.checkSig(update, nodeId), "Extra route contains an invalid update")
   val extraPaymentRoutes: PaymentRouteVec = for (route <- routes) yield route map { case nodeId \ chanUpdate => chanUpdate toHop nodeId }
   val paymentRequest: PaymentRequest = PaymentRequest.read(pr)
+  val isThrowAway = disposable getOrElse true
 }
