@@ -44,7 +44,7 @@ class LNStartActivity extends ScanActivity { me =>
     if (m.getItemId == R.id.actionScan) walletPager.setCurrentItem(1, true)
   }
 
-  override def onResume = wrap(super.onResume)(me returnToBase null)
+  override def onResume = wrap(super.onResume)(walletPager setCurrentItem 0)
   override def onCreateOptionsMenu(menu: Menu) = runAnd(true) {
     // Called after FragLNStart sets its toolbar as actionbar
     getMenuInflater.inflate(R.menu.lnstart, menu)
@@ -52,7 +52,7 @@ class LNStartActivity extends ScanActivity { me =>
   }
 
   def INIT(s: Bundle) = if (app.isAlive) {
-    me setContentView R.layout.activity_double_pager
+    me setContentView R.layout.activity_pager
     walletPager setAdapter slidingFragmentAdapter
   } else me exitTo classOf[MainActivity]
 
@@ -62,7 +62,7 @@ class LNStartActivity extends ScanActivity { me =>
       case _: BitcoinURI => me exitTo MainActivity.wallet
       case _: PaymentRequest => me exitTo MainActivity.wallet
       case _: NodeAnnouncement => me goTo classOf[LNStartFundActivity]
-      case _ => me returnToBase null
+      case _ => walletPager setCurrentItem 0
     }
 }
 

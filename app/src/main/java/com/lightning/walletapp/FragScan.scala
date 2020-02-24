@@ -4,7 +4,6 @@ import android.view._
 import android.support.v4.app._
 import com.journeyapps.barcodescanner._
 import com.lightning.walletapp.ln.Tools._
-import com.lightning.walletapp.R.string._
 import android.support.v4.content.ContextCompat
 import android.Manifest.permission.CAMERA
 import android.content.pm.PackageManager
@@ -21,12 +20,6 @@ trait ScanActivity extends TimerActivity {
   var barcodeReader: BarcodeView = _
 
   def checkTransData: Unit
-  def returnToBase(view: View) = {
-    // Hack to fix a strange behavior
-    walletPager.setCurrentItem(1, false)
-    walletPager.setCurrentItem(0, false)
-  }
-
   def toggleTorch(view: View) = {
     val image = view.asInstanceOf[ImageButton]
     val currentTag = image.getTag.asInstanceOf[Int]

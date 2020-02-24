@@ -24,6 +24,7 @@ import android.support.v4.app.FragmentStatePagerAdapter
 import org.ndeftools.util.activity.NfcReaderActivity
 import com.lightning.walletapp.helper.AwaitService
 import android.support.v4.content.ContextCompat
+import me.relex.circleindicator.CircleIndicator
 import com.github.clans.fab.FloatingActionMenu
 import android.support.v7.widget.SearchView
 import org.bitcoinj.script.ScriptBuilder
@@ -102,21 +103,22 @@ trait HumanTimeDisplay {
 
 class WalletActivity extends NfcReaderActivity with ScanActivity { me =>
   lazy val floatingActionMenu = findViewById(R.id.fam).asInstanceOf[FloatingActionMenu]
+  lazy val positionIndicator = findViewById(R.id.positionIndicator).asInstanceOf[CircleIndicator]
+
   lazy val slidingFragmentAdapter = new FragmentStatePagerAdapter(getSupportFragmentManager) {
-    def getItem(currentFragmentPos: Int) = if (0 == currentFragmentPos) new FragWallet else new FragScan
-    def getCount = 2
+    def getItem(pos: Int) = if (0 == pos) new FragPayMarket else if (1 == pos) new FragWallet else new FragScan
+    def getCount = 3
   }
 
   override def onDestroy = wrap(super.onDestroy)(stopDetecting)
-  override def onResume = wrap(super.onResume)(me returnToBase null)
-  override def onOptionsItemSelected(m: MenuItem): Boolean = runAnd(true) {
-    if (m.getItemId == R.id.actionSettings) me goTo classOf[SettingsActivity]
-    else if (m.getItemId == R.id.actionScan) walletPager.setCurrentItem(1, true)
+  override def onResume = wrap(super.onResume)(walletPager setCurrentItem 1)
+  override def onOptionsItemSelected(menu: MenuItem): Boolean = runAnd(true) {
+    if (menu.getItemId == R.id.actionSettings) me goTo classOf[SettingsActivity]
   }
 
   override def onBackPressed = {
     val isExpanded = FragWallet.worker.currentCut > FragWallet.worker.minLinesNum
-    if (1 == walletPager.getCurrentItem) walletPager.setCurrentItem(0, true)
+    if (1 != walletPager.getCurrentItem) walletPager.setCurrentItem(1, true)
     else if (floatingActionMenu.isOpened) floatingActionMenu close true
     else if (isExpanded) FragWallet.worker.toggler.performClick
     else super.onBackPressed
@@ -198,8 +200,11 @@ class WalletActivity extends NfcReaderActivity with ScanActivity { me =>
 
   def INIT(state: Bundle) = if (app.isAlive) {
     wrap(me setDetecting true)(me initNfc state)
-    me setContentView R.layout.activity_double_pager
+    me setContentView R.layout.activity_pager
+
     walletPager setAdapter slidingFragmentAdapter
+    positionIndicator setViewPager walletPager
+    walletPager setCurrentItem 1
 
     PaymentInfoWrap.newRoutesOrGiveUp = rd =>
       if (rd.callsLeft > 0 && ChannelManager.checkIfSendable(rd).isRight) {
@@ -254,22 +259,22 @@ class WalletActivity extends NfcReaderActivity with ScanActivity { me =>
       val canSendOffChain = Try(btcURI.getAmount).map(coin2MSat).filter(msat => ChannelManager.estimateAIRCanSend >= msat.amount).isSuccess
       if (canSendOffChain && btcURI.getLightningRequest != null) <(app.TransData recordValue btcURI.getLightningRequest, onFail)(_ => checkTransData)
       else FragWallet.worker.sendBtcPopup(btcURI)
-      me returnToBase null
+      walletPager setCurrentItem 1
 
-    case lnUrl: LNUrl =>
-      if (lnUrl.isWithdraw) {
-        val withdrawRequest = WithdrawRequest.fromURI(lnUrl.uri)
-        me doReceivePayment Some(withdrawRequest, lnUrl)
-      } else if (lnUrl.isAuth) showAuthForm(lnUrl)
-      else fetch1stLevelUrl(lnUrl)
-      me returnToBase null
+    case someLNUrl: LNUrl =>
+      if (someLNUrl.isWithdraw) {
+        val withdrawRequest = WithdrawRequest.fromURI(someLNUrl.uri)
+        me doReceivePayment Some(withdrawRequest, someLNUrl)
+      } else if (someLNUrl.isAuth) showAuthForm(someLNUrl)
+      else fetch1stLevelUrl(someLNUrl)
+      walletPager setCurrentItem 1
 
     case pr: PaymentRequest =>
       val ourNetPrefix = PaymentRequest.prefixes(LNParams.chainHash)
       if (ourNetPrefix != pr.prefix) app quickToast err_nothing_useful
       else if (!pr.isFresh) app quickToast dialog_pr_expired
       else FragWallet.worker.standardOffChainSend(pr)
-      me returnToBase null
+      walletPager setCurrentItem 1
 
     case _ =>
   }

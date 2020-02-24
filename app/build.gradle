@@ -47,7 +47,6 @@ dependencies {
     compile 'com.android.support:recyclerview-v7:28.0.0'
     compile 'info.guardianproject.netcipher:netcipher:2.1.0'
     compile 'com.google.code.ndef-tools-for-android:ndeftools:1.2.4'
-    compile 'com.bartoszlipinski:viewpropertyobjectanimator:1.2.0'
     compile 'com.journeyapps:zxing-android-embedded:3.5.0@aar'
     compile 'com.softwaremill.quicklens:quicklens_2.11:1.4.11'
     compile 'org.scala-lang:scala-library:2.11.12'

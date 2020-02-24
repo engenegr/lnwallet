@@ -15,16 +15,8 @@
         android:layout_gravity="center"/>
 
     <ImageButton
-        android:onClick="returnToBase"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:padding="@dimen/app_padding"
-        android:src="@drawable/ic_arrow_back_white_24dp"
-        android:background="?android:selectableItemBackground"/>
-
-    <ImageButton
         android:alpha="0.5"
-        android:padding="25dp"
+        android:padding="20dp"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="center|bottom"
