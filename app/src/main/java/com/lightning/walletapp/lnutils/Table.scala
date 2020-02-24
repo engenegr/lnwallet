@@ -149,9 +149,35 @@ object RevokedInfoTable extends Table {
     COMMIT"""
 }
 
+object PayMarketTable extends Table {
+  val (table, search, lnurl, text, lastMsat, lastDate, visible, image) = ("paymarket", "search", "lnurl", "text", "lastmsat", "lastdate", "visible", "image")
+  val newSql = s"INSERT OR IGNORE INTO $table ($lnurl, $text, $lastMsat, $lastDate, $visible, $image) VALUES (?, ?, ?, ?, ?, ?)"
+  val newVirtualSql = s"INSERT INTO $fts$table ($search, $lnurl) VALUES (?, ?)"
+
+  val selectRecentSql = s"SELECT * FROM $table ORDER BY $lastDate DESC LIMIT 96"
+  val searchSql = s"SELECT * FROM $table WHERE $lnurl IN (SELECT $lnurl FROM $fts$table WHERE $search MATCH ? LIMIT 96)"
+  val updInfoSql = s"UPDATE $table SET $text = ?, $lastMsat = ?, $lastDate = ?, $image = ? WHERE $lnurl = ?"
+  val updVisibleSql = s"UPDATE $table SET $visible = 1 WHERE $lnurl = ?"
+  val killSql = s"DELETE FROM $table WHERE $lnurl = ?"
+
+  // Payment links are searchable by their text descriptions (text metadata + domain name)
+  val createVSql = s"CREATE VIRTUAL TABLE IF NOT EXISTS $fts$table USING $fts($search, $lnurl)"
+
+  val createSql = s"""
+    CREATE TABLE IF NOT EXISTS $table (
+      $id INTEGER PRIMARY KEY AUTOINCREMENT, $lnurl STRING NOT NULL UNIQUE,
+      $text STRING NOT NULL, $lastMsat INTEGER NOT NULL, $lastDate INTEGER NOT NULL,
+      $visible INTEGER NOT NULL, $image BLOB NOT NULL
+    );
+
+    /* lnurl index is created automatically because this field is UNIQUE */
+    CREATE INDEX IF NOT EXISTS idx2$table ON $table ($lastDate);
+    COMMIT"""
+}
+
 trait Table { val (id, fts) = "_id" -> "fts4" }
 class LNOpenHelper(context: Context, name: String)
-  extends SQLiteOpenHelper(context, name, null, 7) {
+  extends SQLiteOpenHelper(context, name, null, 8) {
 
   val base = getWritableDatabase
   val asString: Any => String = {
@@ -172,13 +198,17 @@ class LNOpenHelper(context: Context, name: String)
   def onCreate(dbs: SQLiteDatabase) = {
     dbs execSQL RevokedInfoTable.createSql
     dbs execSQL BadEntityTable.createSql
-    dbs execSQL PaymentTable.createVSql
-    dbs execSQL PaymentTable.createSql
     dbs execSQL ChannelTable.createSql
     dbs execSQL RouteTable.createSql
 
     dbs execSQL OlympusLogTable.createSql
     dbs execSQL OlympusTable.createSql
+
+    dbs execSQL PaymentTable.createVSql
+    dbs execSQL PaymentTable.createSql
+
+    dbs execSQL PayMarketTable.createVSql
+    dbs execSQL PayMarketTable.createSql
 
     // Randomize an order of two available default servers
     val (ord1, ord2) = if (random.nextBoolean) ("0", "1") else ("1", "0")
@@ -197,7 +227,12 @@ class LNOpenHelper(context: Context, name: String)
     // because each table and index has CREATE IF EXISTS prefix
     dbs execSQL RevokedInfoTable.createSql
     dbs execSQL OlympusLogTable.createSql
-    dbs execSQL PaymentTable.createSql
     dbs execSQL RouteTable.createSql
+
+    dbs execSQL PaymentTable.createVSql
+    dbs execSQL PaymentTable.createSql
+
+    dbs execSQL PayMarketTable.createVSql
+    dbs execSQL PayMarketTable.createSql
   }
 }
