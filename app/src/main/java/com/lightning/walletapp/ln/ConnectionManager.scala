@@ -62,7 +62,8 @@ object ConnectionManager {
     }
 
     val thread = Future {
-      val workingAddress = ann.firstAddress.get
+      // Always use the first available address, it's safe it throw here
+      val workingAddress = NodeAddress toInetSocketAddress ann.addresses.head
       sock.connect(workingAddress, 7500)
       handler.init
 

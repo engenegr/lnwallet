@@ -134,57 +134,56 @@ case class NodeAnnouncement(signature: ByteVector, features: ByteVector, timesta
                             unknownFields: ByteVector = ByteVector.empty) extends RoutingMessage {
 
   def canBeReplacedWith(that: NodeAnnouncement) = {
-    val currentAddressIsTor = addresses.headOption.exists(_.isTor)
-    val nextAddressIsTor = that.addresses.headOption.exists(_.isTor)
+    val currentAddressIsTor = addresses.headOption.exists(NodeAddress.isTor)
+    val nextAddressIsTor = that.addresses.headOption.exists(NodeAddress.isTor)
     val fromTorToClearnet = currentAddressIsTor && !nextAddressIsTor
     that.addresses.nonEmpty && !fromTorToClearnet
   }
 
   lazy val hostedChanId = Tools.hostedChanId(LNParams.keys.extendedNodeKey.publicKey.toBin, nodeId.toBin)
-  lazy val firstAddress = scala.util.Try(NodeAddress toInetSocketAddress addresses.head)
   lazy val cutAlias = if (alias.length > 18) s"${alias take 16}..." else alias
   lazy val pretty = nodeId.toString take 15 grouped 3 mkString "\u0020"
   lazy val htmlString = s"$htmlAlias<br><small>$pretty</small>"
 
   lazy val htmlAlias = {
-    val isTor = addresses.headOption.exists(_.isTor)
-    if (isTor) s"<font color=#0000ff>Tor</font> <strong>$cutAlias</strong>"
+    val isTor = addresses.headOption.exists(NodeAddress.isTor)
+    if (isTor) s"<font color=#DB65F0>Tor</font> <strong>$cutAlias</strong>"
     else s"<strong>$cutAlias</strong>"
   }
 }
 
-sealed trait NodeAddress { def isTor: Boolean }
-case object Padding extends NodeAddress { val isTor = false }
+sealed trait NodeAddress
+case object Padding extends NodeAddress
 
 case class IPv4(ipv4: Inet4Address, port: Int) extends NodeAddress {
   override def toString: String = s"${ipv4.toString.tail}:$port"
-  val isTor = false
 }
 
 case class IPv6(ipv6: Inet6Address, port: Int) extends NodeAddress {
   override def toString: String = s"${ipv6.toString.tail}:$port"
-  val isTor = false
 }
 
 case class Tor2(tor2: String, port: Int) extends NodeAddress {
   override def toString: String = s"$tor2${NodeAddress.onionSuffix}:$port"
-  val isTor = true
 }
 
 case class Tor3(tor3: String, port: Int) extends NodeAddress {
   override def toString: String = s"$tor3${NodeAddress.onionSuffix}:$port"
-  val isTor = true
 }
 
 case class Domain(domain: String, port: Int) extends NodeAddress {
   override def toString: String = s"$domain:$port"
-  val isTor = false
 }
 
 case object NodeAddress {
   val onionSuffix = ".onion"
   val V2Len = 16
   val V3Len = 56
+
+  def isTor(na: NodeAddress) = na match {
+    case _: Tor2 | _: Tor3 => true
+    case _ => false
+  }
 
   def toInetSocketAddress: PartialFunction[NodeAddress, InetSocketAddress] = {
     case Tor2(onionHost, port) => new InetSocketAddress(s"$onionHost$onionSuffix", port)
