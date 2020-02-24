@@ -193,7 +193,7 @@ case class PaymentInfo(rawPr: String, hash: String, preimage: String,
 
   // Back compat: use default object if source is not json
   lazy val pd = try to[PaymentDescription](description) catch {
-    case _: Throwable => PaymentDescription(None, description)
+    case _: Throwable => PaymentDescription(None, None, description)
   }
 }
 
@@ -228,6 +228,5 @@ case class AESAction(domain: Option[String], description: String, ciphertext: St
   val finalMessage = s"<br>${description take 144}"
 }
 
-// Previously `PaymentInfo.description` was just raw text
-// once actions were added it became json which encodes this class
-case class PaymentDescription(action: Option[PaymentAction], text: String)
+// Previously `PaymentInfo.description` was just raw text, now it's json which encodes this class
+case class PaymentDescription(action: Option[PaymentAction], lnurl: Option[String], text: String)

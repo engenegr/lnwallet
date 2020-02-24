@@ -90,7 +90,7 @@ object PaymentInfoWrap extends PaymentInfoBag with ChannelListener { me =>
 
     db.change(PaymentTable.newVirtualSql, rd.queryText, pr.paymentHash)
     db.change(PaymentTable.newSql, pr.toJson, preimage, 1 /* incoming payment */, WAITING, System.currentTimeMillis,
-      PaymentDescription(None, description).toJson, pr.paymentHash, amount.toLong, 0L /* lastMsat with fees */,
+      PaymentDescription(None, None, description).toJson, pr.paymentHash, amount.toLong, 0L /* lastMsat with fees */,
       0L /* lastExpiry, may later be updated for reflexive payments */, NOCHANID)
 
     uiNotify
