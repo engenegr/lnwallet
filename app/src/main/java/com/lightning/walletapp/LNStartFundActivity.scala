@@ -103,7 +103,6 @@ class LNStartFundActivity extends TimerActivity { me =>
       override def onException = {
         case (_: Channel, openingError) =>
           // Cancel everything in case of local/remote failure
-          openingError.printStackTrace()
           UITask(app quickToast openingError.getMessage).run
           whenBackPressed.run
       }

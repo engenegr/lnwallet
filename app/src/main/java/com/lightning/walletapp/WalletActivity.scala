@@ -354,8 +354,10 @@ class WalletActivity extends NfcReaderActivity with ScanActivity { me =>
       mkCheckForm(alert => rm(alert)(finish), none, baseTextBuilder(message), dialog_close, -1)
     }
 
-    val title = updateView2Blue(oldView = str2View(new String), s"<big>${lnUrl.uri.getHost}</big>")
-    mkCheckFormNeutral(doLogin, none, wut, baseBuilder(title, null), dialog_login, dialog_cancel, dialog_info)
+    if (32 == dataToSign.length) {
+      val title = updateView2Blue(oldView = str2View(new String), s"<big>${lnUrl.uri.getHost}</big>")
+      mkCheckFormNeutral(doLogin, none, wut, baseBuilder(title, null), dialog_login, dialog_cancel, dialog_info)
+    } else onFail(s"Challenge=$k1 is not a valid 32-byte hex-encoded string")
   }
 
   // BUTTONS REACTIONS
