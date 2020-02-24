@@ -304,8 +304,8 @@
     </array>
 
     <string name="ln_ops_start_fund_local_title"><![CDATA[<small>有疑问或迷路吗？<br><a href=http://lightning-wallet.com/using-lightning-wallet#using-lightning-wallet>了解有关闪电网络的信息</a></small><br><br>支付渠道资金<br><strong>从本地钱包</strong>]]></string>
-    <string name="ln_ops_start_fund_node_view"><![CDATA[<strong>%1$s</strong><br><font color=#999999><i>打开一个频道</i></font><br>%2$s<br><br><font color=#999999>对等节点ID</font><br><small>%3$s</small>]]></string>
-    <string name="ln_ops_start_node_view"><![CDATA[<strong>%1$s</strong><br>%2$s<br><small><font color=#999999>%3$s</font></small>]]></string>
+    <string name="ln_ops_start_fund_node_view"><![CDATA[%1$s<br><font color=#999999><i>打开一个频道</i></font><br>%2$s<br><br><font color=#999999>对等节点ID</font><br><small>%3$s</small>]]></string>
+    <string name="ln_ops_start_node_view"><![CDATA[%1$s<br>%2$s<br><small><font color=#999999>%3$s</font></small>]]></string>
     <string name="ln_ops_start_fund_incoming_channel">传入频道</string>
     <string name="ln_ops_start_fund_hosted_channel">主机通道</string>
 

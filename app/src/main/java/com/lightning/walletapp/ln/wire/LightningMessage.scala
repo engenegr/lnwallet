@@ -133,43 +133,52 @@ case class NodeAnnouncement(signature: ByteVector, features: ByteVector, timesta
                             nodeId: PublicKey, rgbColor: RGB, alias: String, addresses: NodeAddressList,
                             unknownFields: ByteVector = ByteVector.empty) extends RoutingMessage {
 
-  val pretty = addresses collectFirst {
-    case _: IPv4 | _: IPv6 => nodeId.toString take 15 grouped 3 mkString "\u0020"
-    case _: Tor2 => s"<strong>Tor</strong>\u0020${nodeId.toString take 12 grouped 3 mkString "\u0020"}"
-    case _: Tor3 => s"<strong>Tor</strong>\u0020${nodeId.toString take 12 grouped 3 mkString "\u0020"}"
-  } getOrElse "No IP address"
-
-  val asString = {
-    val ellipsized = if (alias.length > 18) s"${alias take 16}..." else alias
-    s"<strong>$ellipsized</strong><br><small>$pretty</small>"
+  def canBeReplacedWith(that: NodeAnnouncement) = {
+    val currentAddressIsTor = addresses.headOption.exists(_.isTor)
+    val nextAddressIsTor = that.addresses.headOption.exists(_.isTor)
+    val fromTorToClearnet = currentAddressIsTor && !nextAddressIsTor
+    that.addresses.nonEmpty && !fromTorToClearnet
   }
 
-  val identifier = (alias + nodeId.toString).toLowerCase
   lazy val hostedChanId = Tools.hostedChanId(LNParams.keys.extendedNodeKey.publicKey.toBin, nodeId.toBin)
-  def firstAddress = scala.util.Try(NodeAddress toInetSocketAddress addresses.head)
+  lazy val firstAddress = scala.util.Try(NodeAddress toInetSocketAddress addresses.head)
+  lazy val cutAlias = if (alias.length > 18) s"${alias take 16}..." else alias
+  lazy val pretty = nodeId.toString take 15 grouped 3 mkString "\u0020"
+  lazy val htmlString = s"$htmlAlias<br><small>$pretty</small>"
+
+  lazy val htmlAlias = {
+    val isTor = addresses.headOption.exists(_.isTor)
+    if (isTor) s"<font color=#0000ff>Tor</font> <strong>$cutAlias</strong>"
+    else s"<strong>$cutAlias</strong>"
+  }
 }
 
-sealed trait NodeAddress
-case object Padding extends NodeAddress
+sealed trait NodeAddress { def isTor: Boolean }
+case object Padding extends NodeAddress { val isTor = false }
 
 case class IPv4(ipv4: Inet4Address, port: Int) extends NodeAddress {
   override def toString: String = s"${ipv4.toString.tail}:$port"
+  val isTor = false
 }
 
 case class IPv6(ipv6: Inet6Address, port: Int) extends NodeAddress {
   override def toString: String = s"${ipv6.toString.tail}:$port"
+  val isTor = false
 }
 
 case class Tor2(tor2: String, port: Int) extends NodeAddress {
   override def toString: String = s"$tor2${NodeAddress.onionSuffix}:$port"
+  val isTor = true
 }
 
 case class Tor3(tor3: String, port: Int) extends NodeAddress {
   override def toString: String = s"$tor3${NodeAddress.onionSuffix}:$port"
+  val isTor = true
 }
 
 case class Domain(domain: String, port: Int) extends NodeAddress {
   override def toString: String = s"$domain:$port"
+  val isTor = false
 }
 
 case object NodeAddress {
@@ -194,12 +203,6 @@ case object NodeAddress {
     case inetV4Address: Inet4Address => IPv4(inetV4Address, port)
     case inetV6Address: Inet6Address => IPv6(inetV6Address, port)
   }
-
-  def canBeUpdated(old: NodeAnnouncement, fresh: NodeAnnouncement) =
-    Tuple2(old.addresses.headOption, fresh.addresses.headOption) match {
-      case Some(_: Tor2 | _: Tor3) \ Some(_: IPv4 | _: IPv6) => false
-      case _ \ freshAddress => freshAddress.isDefined
-    }
 }
 
 // Hosted channel messages
