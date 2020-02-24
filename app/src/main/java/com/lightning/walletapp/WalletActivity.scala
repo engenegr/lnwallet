@@ -206,6 +206,11 @@ class WalletActivity extends NfcReaderActivity with ScanActivity { me =>
     positionIndicator setViewPager walletPager
     walletPager setCurrentItem 1
 
+    positionIndicator setOnClickListener onButtonTap {
+      // Send to scanner if tapped out of curiosity
+      walletPager.setCurrentItem(2, true)
+    }
+
     PaymentInfoWrap.newRoutesOrGiveUp = rd =>
       if (rd.callsLeft > 0 && ChannelManager.checkIfSendable(rd).isRight) {
         // We do not care about options such as AIR or AMP here, this HTLC may be one of them
