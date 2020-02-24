@@ -627,12 +627,13 @@ class FragWalletWorker(val host: WalletActivity, frag: View) extends SearchBar w
       }
     }
 
-  def lnurlPayOffChainSend(domain: String, payReq: PayRequest) = {
+  def lnurlPayOffChainSend(lnUrl: LNUrl, payReq: PayRequest) = {
     new OffChainSender(maxCanSend = math.min(ChannelManager.estimateAIRCanSend, payReq.maxSendable).millisatoshi, minCanSend = payReq.minSendable.millisatoshi) {
-      def displayPaymentForm = mkCheckFormNeutral(sendAttempt, none, _ => browse(s"https://$domain"), baseBuilder(getTitle, baseContent), dialog_ok, dialog_cancel, dialog_info)
+      def displayPaymentForm = mkCheckFormNeutral(sendAttempt, none, _ => viewHost, baseBuilder(getTitle, baseContent), dialog_ok, dialog_cancel, dialog_info)
+      def viewHost = browse(s"${lnUrl.uri.getScheme}://${lnUrl.uri.getHost}")
 
       def getTitle = {
-        val content = s"<strong><big>$domain</big></strong><br><br>${payReq.metaDataTextPlain take 72}"
+        val content = s"<strong><big>${lnUrl.uri.getHost}</big></strong><br><br>${payReq.metaDataTextPlain take 72}"
         host.updateView2Blue(oldView = str2View(new String), app.getString(ln_send_title) format content)
       }
 

@@ -291,10 +291,10 @@ class WalletActivity extends NfcReaderActivity with ScanActivity { me =>
     app quickToast ln_url_resolving
 
     <(to[LNUrlData](LNUrl guardResponse awaitRequest.connectTimeout(15000).body).validate(lnUrl), onFail) {
-      case payReq: PayRequest => FragWallet.worker.lnurlPayOffChainSend(lnUrl.uri.getHost, payReq)
-      case withdrawReq: WithdrawRequest => me doReceivePayment Some(withdrawReq, lnUrl)
-      case hostedRequest: HostedChannelRequest => me goLNStartFund hostedRequest
-      case incoming: IncomingChannelRequest => me initIncoming incoming
+      case response: PayRequest => FragWallet.worker.lnurlPayOffChainSend(lnUrl, response)
+      case response: WithdrawRequest => me doReceivePayment Some(response, lnUrl)
+      case response: IncomingChannelRequest => me initIncoming response
+      case response: HostedChannelRequest => me goLNStartFund response
       case _ => app quickToast err_nothing_useful
     }
   }
