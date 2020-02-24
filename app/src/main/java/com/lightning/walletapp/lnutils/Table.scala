@@ -153,8 +153,9 @@ object PayMarketTable extends Table {
   val (table, search, lnurl, text, lastMsat, lastDate, visible, image) = ("paymarket", "search", "lnurl", "text", "lastmsat", "lastdate", "visible", "image")
   val newSql = s"INSERT OR IGNORE INTO $table ($lnurl, $text, $lastMsat, $lastDate, $visible, $image) VALUES (?, ?, ?, ?, ?, ?)"
   val newVirtualSql = s"INSERT INTO $fts$table ($search, $lnurl) VALUES (?, ?)"
+  val NOIMAGE = Array.emptyByteArray
 
-  val selectRecentSql = s"SELECT * FROM $table ORDER BY $lastDate DESC LIMIT 96"
+  val selectRecentSql = s"SELECT * FROM $table WHERE $visible = 1 ORDER BY $visible, $lastDate DESC LIMIT 96"
   val searchSql = s"SELECT * FROM $table WHERE $lnurl IN (SELECT $lnurl FROM $fts$table WHERE $search MATCH ? LIMIT 96)"
   val updInfoSql = s"UPDATE $table SET $text = ?, $lastMsat = ?, $lastDate = ?, $image = ? WHERE $lnurl = ?"
   val updVisibleSql = s"UPDATE $table SET $visible = 1 WHERE $lnurl = ?"
@@ -171,7 +172,7 @@ object PayMarketTable extends Table {
     );
 
     /* lnurl index is created automatically because this field is UNIQUE */
-    CREATE INDEX IF NOT EXISTS idx2$table ON $table ($lastDate);
+    CREATE INDEX IF NOT EXISTS idx2$table ON $table ($visible, $lastDate);
     COMMIT"""
 }
 
