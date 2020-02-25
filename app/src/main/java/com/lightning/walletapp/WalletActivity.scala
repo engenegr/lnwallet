@@ -203,9 +203,10 @@ class WalletActivity extends NfcReaderActivity with ScanActivity { me =>
     me setContentView R.layout.activity_pager
 
     walletPager setAdapter slidingFragmentAdapter
-    positionIndicator setViewPager walletPager
+    walletPager setOffscreenPageLimit 2
     walletPager setCurrentItem 1
 
+    positionIndicator setViewPager walletPager
     positionIndicator setOnClickListener onButtonTap {
       // Send to scanner if tapped out of curiosity
       walletPager.setCurrentItem(2, true)

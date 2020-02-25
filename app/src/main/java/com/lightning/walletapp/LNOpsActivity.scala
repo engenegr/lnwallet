@@ -50,7 +50,7 @@ class LNOpsActivity extends TimerActivity with HumanTimeDisplay { me =>
     def getView(position: Int, savedView: View, parent: ViewGroup) = {
       // Use View as well as ViewHolder caching to display chan cards as fast as possible
       // it may happen that HostedView gets on NormalChannel and vice versa: account for that
-      val card = if (null == savedView) getLayoutInflater.inflate(R.layout.chan_card, null) else savedView
+      val card = if (null == savedView) getLayoutInflater.inflate(R.layout.card_chan, null) else savedView
 
       val cardView = Tuple3(getItem(position), getItem(position).data, card.getTag) match {
         case (chan: HostedChannel, commits: HostedCommits, view: HostedViewHolder) => view.fill(chan, commits)

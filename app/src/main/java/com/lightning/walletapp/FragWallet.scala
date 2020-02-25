@@ -794,7 +794,7 @@ class FragWalletWorker(val host: WalletActivity, frag: View) extends SearchBar w
   }
 
   def react = android.support.v4.app.LoaderManager.getInstance(host).restartLoader(1, null, loaderCallbacks).forceLoad
-  val observer = new ContentObserver(new Handler) { override def onChange(fromSelf: Boolean) = if (!fromSelf) react }
+  val observer = new ContentObserver(new Handler) { override def onChange(askedFromSelf: Boolean) = if (!askedFromSelf) react }
   host.getContentResolver.registerContentObserver(db sqlPath PaymentTable.table, true, observer)
   host setSupportActionBar frag.findViewById(R.id.toolbar).asInstanceOf[Toolbar]
   host.timer.schedule(adapter.notifyDataSetChanged, 10000, 10000)
