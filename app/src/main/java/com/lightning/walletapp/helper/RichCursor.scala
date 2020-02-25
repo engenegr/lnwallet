@@ -13,6 +13,7 @@ case class RichCursor(c: Cursor) extends Iterable[RichCursor] { me =>
   def headTry[T](fun: RichCursor => T) = try Try(fun apply head) finally c.close
   def string(stringKey: String) = c.getString(c getColumnIndex stringKey)
   def long(longKey: String) = c.getLong(c getColumnIndex longKey)
+  def bytes(intKey: String) = c.getBlob(c getColumnIndex intKey)
   def int(intKey: String) = c.getInt(c getColumnIndex intKey)
 
   def iterator = new Iterator[RichCursor] {

@@ -287,10 +287,11 @@ class WalletActivity extends NfcReaderActivity with ScanActivity { me =>
   // LNURL
 
   def fetch1stLevelUrl(lnUrl: LNUrl) = {
-    val awaitRequest = get(lnUrl.uri.toString, false)
+    val awaitRequest = get(lnUrl.uri.toString, false).header("Connection", "close").connectTimeout(15000)
+    // Notify user something is happening and try to obtain a 1st level Json data
     app quickToast ln_url_resolving
 
-    <(to[LNUrlData](LNUrl guardResponse awaitRequest.connectTimeout(15000).body).validate(lnUrl), onFail) {
+    <(to[LNUrlData](LNUrl guardResponse awaitRequest.body).validate(lnUrl), onFail) {
       case response: PayRequest => FragWallet.worker.lnurlPayOffChainSend(lnUrl, response)
       case response: WithdrawRequest => me doReceivePayment Some(response, lnUrl)
       case response: IncomingChannelRequest => me initIncoming response
@@ -390,8 +391,9 @@ class WalletActivity extends NfcReaderActivity with ScanActivity { me =>
         else if (withRoutes.isEmpty) showForm(negTextBuilder(dialog_ok, getString(ln_receive_6conf).html).create)
         else if (maxCanReceive.amount < 0L) showForm(negTextBuilder(dialog_ok, reserveUnspentWarning.html).create)
         else FragWallet.worker.receive(withRoutes, finalMaxCanReceiveCapped, MilliSatoshi(wr.minCanReceive), title, wr.defaultDescription) { rd =>
-          queue.map(_ => wr.requestWithdraw(lnUrl, rd.pr).body).map(LNUrl.guardResponse).foreach(none, onRequestFailed)
-          def onRequestFailed(response: Throwable) = wrap(PaymentInfoWrap failOnUI rd)(me onFail response)
+          app.foregroundServiceIntent.putExtra(AwaitService.SHOW_AMOUNT, denom asString rd.pr.amount.get).setAction(AwaitService.SHOW_AMOUNT)
+          queue.map(_ => wr.requestWithdraw(lnUrl, rd.pr).body).map(LNUrl.guardResponse).foreach(none, onFail)
+          ContextCompat.startForegroundService(app, app.foregroundServiceIntent)
         }
 
       case None =>

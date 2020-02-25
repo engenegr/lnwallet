@@ -150,15 +150,14 @@ object RevokedInfoTable extends Table {
 }
 
 object PayMarketTable extends Table {
-  val (table, search, lnurl, text, lastMsat, lastDate, visible, image) = ("paymarket", "search", "lnurl", "text", "lastmsat", "lastdate", "visible", "image")
-  val newSql = s"INSERT OR IGNORE INTO $table ($lnurl, $text, $lastMsat, $lastDate, $visible, $image) VALUES (?, ?, ?, ?, ?, ?)"
+  val (table, search, lnurl, text, lastMsat, lastDate, image) = ("paymarket", "search", "lnurl", "text", "lastmsat", "lastdate", "image")
+  val newSql = s"INSERT OR IGNORE INTO $table ($lnurl, $text, $lastMsat, $lastDate, $image) VALUES (?, ?, ?, ?, ?)"
   val newVirtualSql = s"INSERT INTO $fts$table ($search, $lnurl) VALUES (?, ?)"
-  val NOIMAGE = Array.emptyByteArray
+  final val NOIMAGE = Array.emptyByteArray
 
-  val selectRecentSql = s"SELECT * FROM $table WHERE $visible = 1 ORDER BY $visible, $lastDate DESC LIMIT 96"
+  val selectRecentSql = s"SELECT * FROM $table ORDER BY $lastDate DESC LIMIT 96"
   val searchSql = s"SELECT * FROM $table WHERE $lnurl IN (SELECT $lnurl FROM $fts$table WHERE $search MATCH ? LIMIT 96)"
   val updInfoSql = s"UPDATE $table SET $text = ?, $lastMsat = ?, $lastDate = ?, $image = ? WHERE $lnurl = ?"
-  val updVisibleSql = s"UPDATE $table SET $visible = 1 WHERE $lnurl = ?"
   val killSql = s"DELETE FROM $table WHERE $lnurl = ?"
 
   // Payment links are searchable by their text descriptions (text metadata + domain name)
@@ -168,17 +167,17 @@ object PayMarketTable extends Table {
     CREATE TABLE IF NOT EXISTS $table (
       $id INTEGER PRIMARY KEY AUTOINCREMENT, $lnurl STRING NOT NULL UNIQUE,
       $text STRING NOT NULL, $lastMsat INTEGER NOT NULL, $lastDate INTEGER NOT NULL,
-      $visible INTEGER NOT NULL, $image BLOB NOT NULL
+      $image BLOB NOT NULL
     );
 
-    /* lnurl index is created automatically because this field is UNIQUE */
-    CREATE INDEX IF NOT EXISTS idx2$table ON $table ($visible, $lastDate);
+    /* lnurl index is created automatically since field is UNIQUE */
+    CREATE INDEX IF NOT EXISTS idx1$table ON $table ($lastDate);
     COMMIT"""
 }
 
 trait Table { val (id, fts) = "_id" -> "fts4" }
 class LNOpenHelper(context: Context, name: String)
-  extends SQLiteOpenHelper(context, name, null, 8) {
+  extends SQLiteOpenHelper(context, name, null, 9) {
 
   val base = getWritableDatabase
   val asString: Any => String = {
@@ -187,14 +186,11 @@ class LNOpenHelper(context: Context, name: String)
     case otherwise => otherwise.toString
   }
 
+  def sqlPath(tbl: String) = Uri parse s"sqlite://com.lightning.walletapp/table/$tbl"
   def change(sql: String, params: Any*) = base.execSQL(sql, params.map(asString).toArray)
   def select(sql: String, params: Any*) = base.rawQuery(sql, params.map(asString).toArray)
-  def sqlPath(tbl: String) = Uri parse s"sqlite://com.lightning.walletapp/table/$tbl"
-
-  def txWrap(run: => Unit) = try {
-    runAnd(base.beginTransaction)(run)
-    base.setTransactionSuccessful
-  } finally base.endTransaction
+  def txWrap(run: => Unit) = try { base.beginTransaction; run; base.setTransactionSuccessful } finally base.endTransaction
+  def search(sqlSelectQuery: String, rawQuery: String) = select(sqlSelectQuery, rawQuery.replaceAll("[^ a-zA-Z0-9]", "") + "*")
 
   def onCreate(dbs: SQLiteDatabase) = {
     dbs execSQL RevokedInfoTable.createSql

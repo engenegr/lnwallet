@@ -22,7 +22,6 @@ import com.lightning.walletapp.Utils.app.TransData.nodeLink
 import com.lightning.walletapp.lnutils.JsonHttpUtils.to
 import com.lightning.walletapp.helper.ThrottledWork
 import fr.acinq.bitcoin.Crypto.PublicKey
-import android.graphics.BitmapFactory
 import org.bitcoinj.uri.BitcoinURI
 import android.os.Bundle
 import scala.util.Try
@@ -183,8 +182,9 @@ case class LNUrl(request: String) {
 }
 
 trait LNUrlData {
-  def unsafe(req: String) = get(req, false)
   def checkAgainstParent(lnUrl: LNUrl): Boolean = true
+  def unsafe(req: String) = get(req, false).header("Connection", "close")
+
   def validate(lnUrl: LNUrl) = checkAgainstParent(lnUrl) match {
     case false => throw new Exception("Callback domain mismatch")
     case true => this
@@ -192,13 +192,12 @@ trait LNUrlData {
 }
 
 object WithdrawRequest {
-  def fromURI(uri: android.net.Uri) = {
-    val maxWithdrawable = uri.getQueryParameter("maxWithdrawable").toLong
-    val minWithdrawableOpt = Some(uri.getQueryParameter("minWithdrawable").toLong)
-    WithdrawRequest(callback = uri.getQueryParameter("callback"), k1 = uri.getQueryParameter("k1"),
-      maxWithdrawable = maxWithdrawable, defaultDescription = uri.getQueryParameter("defaultDescription"),
-      minWithdrawable = minWithdrawableOpt)
-  }
+  def fromURI(uri: android.net.Uri) =
+    WithdrawRequest(callback = uri getQueryParameter "callback",
+      minWithdrawable = Some(uri.getQueryParameter("minWithdrawable").toLong),
+      maxWithdrawable = uri.getQueryParameter("maxWithdrawable").toLong,
+      defaultDescription = uri getQueryParameter "defaultDescription",
+      k1 = uri getQueryParameter "k1")
 }
 
 case class WithdrawRequest(callback: String, k1: String, maxWithdrawable: Long, defaultDescription: String, minWithdrawable: Option[Long] = None) extends LNUrlData {
@@ -242,15 +241,14 @@ object PayRequest {
   type Route = Vector[KeyAndUpdate]
 }
 
+case class PayLinkInfo(imageBytes: Array[Byte], lnurl: LNUrl, text: String, lastMsat: MilliSatoshi, lastDate: Long)
 case class PayRequest(callback: String, maxSendable: Long, minSendable: Long, metadata: String) extends LNUrlData {
   private val decodedMetadata = to[PayMetaData](metadata)
 
-  val metaDataBitmaps = for {
+  val metaDataImageArrays = for {
     Vector("image/png;base64" | "image/jpeg;base64", content) <- decodedMetadata
-    _ = require(content.length <= 136536, s"Thumbnail is too heavy, base64 length=${content.length}")
-    imageByteArray = ByteVector.fromValidBase64(content, alphabet = Bases.Alphabets.Base64).toArray
-    decodedBitmap = BitmapFactory.decodeByteArray(imageByteArray, 0, imageByteArray.length)
-  } yield decodedBitmap
+    _ = require(content.length <= 136536, s"Image is too heavy, base64 length=${content.length}")
+  } yield ByteVector.fromValidBase64(content, alphabet = Bases.Alphabets.Base64).toArray
 
   val callbackUri = LNUrl.checkHost(callback)
   val minCanSend = minSendable max LNParams.minPaymentMsat

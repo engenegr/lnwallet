@@ -14,11 +14,11 @@ import rx.lang.scala.{Observable => Obs}
 import com.lightning.walletapp.helper.{AES, RichCursor}
 import fr.acinq.bitcoin.{Crypto, MilliSatoshi, Transaction}
 import com.lightning.walletapp.lnutils.olympus.{CerberusAct, OlympusWrap}
+import com.lightning.walletapp.{ChannelManager, LNUrl, PayLinkInfo, PayRequest}
 import com.lightning.walletapp.ln.wire.LightningMessageCodecs.cerberusPayloadCodec
 import com.lightning.walletapp.ln.wire.LightningMessageCodecs
 import com.lightning.walletapp.ln.RoutingInfoTag.PaymentRoute
 import com.lightning.walletapp.ln.crypto.Sphinx.PublicKeyVec
-import com.lightning.walletapp.ChannelManager
 import fr.acinq.bitcoin.Crypto.PublicKey
 import com.lightning.walletapp.Utils.app
 import scodec.bits.ByteVector
@@ -61,12 +61,8 @@ object PaymentInfoWrap extends PaymentInfoBag with ChannelListener { me =>
   def getPaymentInfo(hash: ByteVector) = RichCursor apply db.select(PaymentTable.selectSql, hash) headTry toPaymentInfo
   def updStatus(status: Int, hash: ByteVector) = db.change(PaymentTable.updStatusSql, status, hash)
   def uiNotify = app.getContentResolver.notifyChange(db sqlPath PaymentTable.table, null)
+  def byQuery(rawQuery: String) = db.search(PaymentTable.searchSql, rawQuery)
   def byRecent = db select PaymentTable.selectRecentSql
-
-  def byQuery(rawQuery: String) = {
-    val refinedQuery = rawQuery.replaceAll("[^ a-zA-Z0-9]", "")
-    db.select(PaymentTable.searchSql, s"$refinedQuery*")
-  }
 
   def toPaymentInfo(rc: RichCursor) =
     PaymentInfo(rawPr = rc string PaymentTable.pr, hash = rc string PaymentTable.hash, preimage = rc string PaymentTable.preimage,
@@ -296,4 +292,23 @@ object BadEntityWrap {
     val finalBadChans = badChans.map(_.toLong) ++ rd.expensiveScids // Add not yet blacklisted but overly expensive shortChannelIds
     olympusWrap findRoutes OutRequest(rd.firstMsat / 1000L, finalBadNodes, finalBadChans, fromAsStr, targetStr)
   }
+}
+
+object PayMarketWrap {
+  def rm(url: String) = db.change(PayMarketTable.killSql, url)
+  def saveLink(lnUrl: LNUrl, payReq: PayRequest, msat: MilliSatoshi) = db txWrap {
+    val thumbnailArray = payReq.metaDataImageArrays.headOption.getOrElse(PayMarketTable.NOIMAGE)
+    db.change(PayMarketTable.updInfoSql, payReq.metaDataTextPlain, msat.toLong, System.currentTimeMillis, thumbnailArray, lnUrl.request)
+    db.change(PayMarketTable.newSql, lnUrl.request, payReq.metaDataTextPlain, msat.toLong, System.currentTimeMillis, thumbnailArray)
+    db.change(PayMarketTable.newVirtualSql, s"${lnUrl.uri.getHost} ${payReq.metaDataTextPlain}", lnUrl.request)
+  }
+
+  def uiNotify = app.getContentResolver.notifyChange(db sqlPath PayMarketTable.table, null)
+  def byQuery(rawQuery: String) = db.search(PayMarketTable.searchSql, rawQuery)
+  def byRecent = db select PayMarketTable.selectRecentSql
+
+  def toLinkInfo(rc: RichCursor) =
+    PayLinkInfo(imageBytes = rc bytes PayMarketTable.image, lnurl = LNUrl(rc string PayMarketTable.lnurl),
+      text = rc string PayMarketTable.text, lastMsat = MilliSatoshi(rc long PayMarketTable.lastMsat),
+      lastDate = rc long PayMarketTable.lastDate)
 }

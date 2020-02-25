@@ -655,6 +655,7 @@ class FragWalletWorker(val host: WalletActivity, frag: View) extends SearchBar w
           val rd = app.emptyRD(prf.paymentRequest, firstMsat = ms.toLong, useCache = true)
           val pd = PaymentDescription(prf.successAction, Some(lnUrl.request), payReq.metaDataTextPlain)
           val rd1 = rd.copy(description = pd, airLeft = ChannelManager.all count isOperational)
+          if (!prf.isThrowAway) PayMarketWrap.saveLink(lnUrl, payReq, ms)
           UITask(me doSendOffChain rd1).run
         }
 
