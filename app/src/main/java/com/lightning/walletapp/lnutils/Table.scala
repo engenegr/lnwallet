@@ -219,9 +219,6 @@ class LNOpenHelper(context: Context, name: String)
     // Old version of RouteTable had a useless expiry column
     dbs execSQL s"DROP TABLE IF EXISTS ${RouteTable.table}"
 
-    dbs execSQL s"DROP TABLE IF EXISTS ${PayMarketTable.table}"
-    dbs execSQL s"DROP TABLE IF EXISTS ${PayMarketTable.fts}${PayMarketTable.table}"
-
     // Should work even for updates across many version ranges
     // because each table and index has CREATE IF EXISTS prefix
     dbs execSQL RevokedInfoTable.createSql
