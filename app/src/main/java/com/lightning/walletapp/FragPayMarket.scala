@@ -7,6 +7,7 @@ import com.arlib.floatingsearchview.FloatingSearchView.OnQueryChangeListener
 import com.arlib.floatingsearchview.FloatingSearchView
 import com.lightning.walletapp.Utils._
 import android.support.v4.app.Fragment
+import com.lightning.walletapp.R.string._
 import android.widget.{BaseAdapter, GridView, ImageView, TextView}
 import android.os.{Bundle, Handler}
 import android.support.v4.app.LoaderManager.LoaderCallbacks
@@ -32,6 +33,7 @@ class FragPayMarket extends Fragment {
 class FragPayMarketWorker(val host: WalletActivity, frag: View) extends HumanTimeDisplay { me =>
   val paySearch = frag.findViewById(R.id.paySearch).asInstanceOf[FloatingSearchView]
   val gridView = frag.findViewById(R.id.gridView).asInstanceOf[GridView]
+  val lastPaid = app getString pay_market_last_payment
   var allPayLinks = Vector.empty[PayLinkInfo]
 
   val adapter = new BaseAdapter {
@@ -72,7 +74,7 @@ class FragPayMarketWorker(val host: WalletActivity, frag: View) extends HumanTim
 
       info.bitmap map image.setImageBitmap
       image setVisibility viewMap(info.bitmap.isSuccess)
-      lastAttempt setText s"$date &#8226; $msat".html
+      lastAttempt setText lastPaid.format(msat, date).html
       domainName setText info.lnurl.uri.getHost
       textMetadata setText info.text
     }
