@@ -272,11 +272,9 @@ class WalletActivity extends NfcReaderActivity with ScanActivity { me =>
         else FragWallet.worker.sendBtcPopup(btcURI)
 
       case lnUrl: LNUrl =>
-        if (lnUrl.isWithdraw) {
-          val withdrawRequest = WithdrawRequest.fromURI(lnUrl.uri)
-          me doReceivePayment Some(withdrawRequest, lnUrl)
-        } else if (lnUrl.isAuth) showAuthForm(lnUrl)
-        else fetch1stLevelUrl(lnUrl)
+        if (lnUrl.isAuth) showAuthForm(lnUrl)
+        else if (lnUrl.isWithdraw) me doReceivePayment Some(WithdrawRequest fromURI lnUrl.uri, lnUrl)
+        else fetch1stLevelUrl(onSuccess = resolveLNUrl(lnUrl), onFailure = onFail, lnUrl)
 
       case pr: PaymentRequest =>
         val ourNetPrefix = PaymentRequest.prefixes(LNParams.chainHash)
@@ -290,18 +288,18 @@ class WalletActivity extends NfcReaderActivity with ScanActivity { me =>
 
   // LNURL
 
-  def fetch1stLevelUrl(lnUrl: LNUrl) = {
+  def fetch1stLevelUrl(onSuccess: LNUrlData => Unit, onFailure: Throwable => Unit, lnUrl: LNUrl) = {
     val awaitRequest = get(lnUrl.uri.toString, false).header("Connection", "close").connectTimeout(15000)
-    // Notify user something is happening and try to obtain a 1st level Json data
+    <(to[LNUrlData](LNUrl guardResponse awaitRequest.body).validate(lnUrl), onFailure)(onSuccess)
     app quickToast ln_url_resolving
+  }
 
-    <(to[LNUrlData](LNUrl guardResponse awaitRequest.body).validate(lnUrl), onFail) {
-      case response: PayRequest => FragWallet.worker.lnurlPayOffChainSend(lnUrl, response)
-      case response: WithdrawRequest => me doReceivePayment Some(response, lnUrl)
-      case response: IncomingChannelRequest => me initIncoming response
-      case response: HostedChannelRequest => me goLNStartFund response
-      case _ => app quickToast err_nothing_useful
-    }
+  def resolveLNUrl(lnUrl: LNUrl)(data: LNUrlData): Unit = data match {
+    case response: PayRequest => FragWallet.worker.lnurlPayOffChainSend(lnUrl, response)
+    case response: WithdrawRequest => me doReceivePayment Some(response, lnUrl)
+    case response: IncomingChannelRequest => me initIncoming response
+    case response: HostedChannelRequest => me goLNStartFund response
+    case _ => app quickToast err_nothing_useful
   }
 
   def goLNStartFund(data: Any) = {
@@ -311,7 +309,7 @@ class WalletActivity extends NfcReaderActivity with ScanActivity { me =>
 
   def initIncoming(incoming: IncomingChannelRequest) = {
     val initialListener = new ConnectionListener { self =>
-      // TODO: rewrite connection manager to remove this hack
+      // TODO: rewrite connection manager to remove mutable var hack
 
       var notCalledYet = true
       override def onDisconnect(nodeId: PublicKey) = ConnectionManager.listeners -= self

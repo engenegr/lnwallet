@@ -295,7 +295,7 @@ object BadEntityWrap {
 }
 
 object PayMarketWrap {
-  def rm(url: String) = db.change(PayMarketTable.killSql, url)
+  def rm(lnUrl: LNUrl) = db.change(PayMarketTable.killSql, lnUrl.request)
   def saveLink(lnUrl: LNUrl, payReq: PayRequest, msat: MilliSatoshi) = db txWrap {
     val thumbnailImageString64 = payReq.metaDataImageBase64s.headOption.getOrElse(new String)
     db.change(PayMarketTable.updInfoSql, payReq.metaDataTextPlain, msat.toLong, System.currentTimeMillis, thumbnailImageString64, lnUrl.request)

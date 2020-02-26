@@ -339,5 +339,6 @@
 
     <!-- pay market -->
     <string name="pay_market_search_hint">Payment link search</string>
-    <string name="pay_market_last_payment"><![CDATA[Last paid <strong>%1$s</strong> at %2$s]]></string>
+    <string name="pay_market_last_payment"><![CDATA[Last paid <strong>%2$s</strong> at %1$s]]></string>
+    <string name="pay_market_remove_link"><![CDATA[<br>Would you like to remove this payment link?]]></string>
 </resources>

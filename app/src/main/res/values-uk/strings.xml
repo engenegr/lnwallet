@@ -342,4 +342,9 @@
     <string name="err_ln_hosted_in_flight_htlc_while_restoring">Remote restore failure</string>
     <string name="err_ln_hosted_timed_out_outgoing_htlc">Timed out outgoing payment</string>
     <string name="err_ln_hosted_channel_denied">Hosted channel denied</string>
+
+    <!-- pay market -->
+    <string name="pay_market_search_hint">Пошук платіжних посилань</string>
+    <string name="pay_market_last_payment"><![CDATA[Минулий платіж <strong>%2$s</strong>, %1$s]]></string>
+    <string name="pay_market_remove_link"><![CDATA[<br>Хочете видалити платіжне посилання?]]></string>
 </resources>

@@ -331,4 +331,9 @@
     <string name="err_ln_hosted_in_flight_htlc_while_restoring">远程还原失败</string>
     <string name="err_ln_hosted_timed_out_outgoing_htlc">超时付款</string>
     <string name="err_ln_hosted_channel_denied">托管频道被拒绝</string>
+
+    <!-- pay market -->
+    <string name="pay_market_search_hint">付款链接搜索</string>
+    <string name="pay_market_last_payment"><![CDATA[最后一次付款 <strong>%2$s</strong>, %1$s]]></string>
+    <string name="pay_market_remove_link"><![CDATA[<br>您要删除此付款链接吗？]]></string>
 </resources>

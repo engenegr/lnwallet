@@ -99,7 +99,7 @@ object PaymentTable extends Table {
   val selectSql = s"SELECT * FROM $table WHERE $hash = ?"
   val selectRecentSql = s"SELECT * FROM $table ORDER BY $id DESC LIMIT 48"
   val selectPaymentNumSql = s"SELECT count($hash) FROM $table WHERE $status = $SUCCESS AND $chanId = ?"
-  val searchSql = s"SELECT * FROM $table WHERE $hash IN (SELECT $hash FROM $fts$table WHERE $search MATCH ? LIMIT 96)"
+  val searchSql = s"SELECT * FROM $table WHERE $hash IN (SELECT $hash FROM $fts$table WHERE $search MATCH ?) LIMIT 96"
 
   // Updating, creating, removing
   val updOkOutgoingSql = s"UPDATE $table SET $status = $SUCCESS, $preimage = ?, $chanId = ? WHERE $hash = ?"
@@ -154,8 +154,8 @@ object PayMarketTable extends Table {
   val newSql = s"INSERT OR IGNORE INTO $table ($lnurl, $text, $lastMsat, $lastDate, $image) VALUES (?, ?, ?, ?, ?)"
   val newVirtualSql = s"INSERT INTO $fts$table ($search, $lnurl) VALUES (?, ?)"
 
-  val selectRecentSql = s"SELECT * FROM $table ORDER BY $lastDate DESC LIMIT 96"
-  val searchSql = s"SELECT * FROM $table WHERE $lnurl IN (SELECT $lnurl FROM $fts$table WHERE $search MATCH ? LIMIT 96)"
+  val selectRecentSql = s"SELECT * FROM $table ORDER BY $lastDate DESC LIMIT 48"
+  val searchSql = s"SELECT * FROM $table WHERE $lnurl IN (SELECT $lnurl FROM $fts$table WHERE $search MATCH ?) LIMIT 96"
   val updInfoSql = s"UPDATE $table SET $text = ?, $lastMsat = ?, $lastDate = ?, $image = ? WHERE $lnurl = ?"
   val killSql = s"DELETE FROM $table WHERE $lnurl = ?"
 

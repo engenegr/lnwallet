@@ -15,26 +15,29 @@ import com.lightning.walletapp.lnutils.ImplicitConversions._
 import org.bitcoinj.wallet.Wallet.ExceededMaxTransactionSize
 import org.bitcoinj.wallet.Wallet.CouldNotAdjustDownwards
 import android.widget.AdapterView.OnItemClickListener
+
 import concurrent.ExecutionContext.Implicits.global
 import com.lightning.walletapp.lnutils.RatesSaver
 import android.support.v7.app.AppCompatActivity
 import android.support.v4.content.ContextCompat
 import ViewGroup.LayoutParams.WRAP_CONTENT
-import android.view.View.OnClickListener
+import android.view.View.{OnClickListener, OnLongClickListener}
 import org.aviran.cookiebar2.CookieBar
 import android.app.AlertDialog.Builder
 import org.bitcoinj.wallet.SendRequest
 import fr.acinq.bitcoin.MilliSatoshi
+
 import language.implicitConversions
 import org.bitcoinj.script.Script
+
 import scala.concurrent.Future
 import android.content.Intent
 import android.os.Bundle
 import android.net.Uri
-
 import com.lightning.walletapp.lnutils.IconGetter.{maxDialog, scrWidth}
 import com.lightning.walletapp.ln.Tools.{none, runAnd, wrap}
 import org.bitcoinj.wallet.SendRequest.{emptyWallet, to}
+
 import scala.util.{Failure, Success, Try}
 import android.app.{AlertDialog, Dialog}
 import java.util.{Timer, TimerTask}
@@ -189,6 +192,10 @@ trait TimerActivity extends AppCompatActivity { me =>
   }
 
   // Utils
+  def onLongButtonTap(exec: => Unit) = new OnLongClickListener {
+    def onLongClick(longTappableButton: View) = runAnd(true)(exec)
+  }
+
   def onButtonTap(exec: => Unit) = new OnClickListener { def onClick(view: View) = exec }
   def onTap(listItemTapRunner: Int => Unit): OnItemClickListener = new OnItemClickListener {
     def onItemClick(a: AdapterView[_], view: View, pos: Int, id: Long) = listItemTapRunner(pos)
