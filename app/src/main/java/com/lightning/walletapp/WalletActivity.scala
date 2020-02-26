@@ -311,9 +311,13 @@ class WalletActivity extends NfcReaderActivity with ScanActivity { me =>
 
   def initIncoming(incoming: IncomingChannelRequest) = {
     val initialListener = new ConnectionListener { self =>
+      // TODO: rewrite connection manager to remove this hack
+
+      var notCalledYet = true
       override def onDisconnect(nodeId: PublicKey) = ConnectionManager.listeners -= self
-      override def onOperational(nodeId: PublicKey, isCompatible: Boolean) = if (isCompatible) {
-        queue.map(_ => incoming.requestChannel.body).map(LNUrl.guardResponse).foreach(none, onCallFailed)
+      override def onOperational(nodeId: PublicKey, isCompatible: Boolean) = if (isCompatible && notCalledYet) {
+        queue.map(_ => incoming.requestChannel.body).map(LNUrl.guardResponse).foreach(none, onFail)
+        notCalledYet = false
       }
 
       override def onMessage(nodeId: PublicKey, msg: LightningMessage) = msg match {
@@ -326,11 +330,6 @@ class WalletActivity extends NfcReaderActivity with ScanActivity { me =>
         val hnv = HardcodedNodeView(incoming.ann, incomingTip)
         me goLNStartFund IncomingChannelParams(hnv, open)
         ConnectionManager.listeners -= self
-      }
-
-      def onCallFailed(err: Throwable) = {
-        ConnectionManager.listeners -= self
-        onFail(err)
       }
     }
 
