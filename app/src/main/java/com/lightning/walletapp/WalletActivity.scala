@@ -202,9 +202,9 @@ class WalletActivity extends NfcReaderActivity with ScanActivity { me =>
     wrap(me setDetecting true)(me initNfc state)
     me setContentView R.layout.activity_pager
 
-    walletPager setAdapter slidingFragmentAdapter
-    walletPager setOffscreenPageLimit 2
-    walletPager setCurrentItem 1
+    walletPager.setAdapter(slidingFragmentAdapter)
+    walletPager.setOffscreenPageLimit(2)
+    walletPager.setCurrentItem(1, false)
 
     positionIndicator setViewPager walletPager
     positionIndicator setOnClickListener onButtonTap {
@@ -256,33 +256,34 @@ class WalletActivity extends NfcReaderActivity with ScanActivity { me =>
 
   // EXTERNAL DATA CHECK
 
-  def checkTransData = app.TransData checkAndMaybeErase {
-    case _: NodeAnnouncement => me goTo classOf[LNStartFundActivity]
-    case FragWallet.OPEN_RECEIVE_MENU => goReceivePayment(null): Unit
-    case FragWallet.REDIRECT => goOps(null): Unit
+  def checkTransData = {
+    walletPager.setCurrentItem(1, false)
 
-    case btcURI: BitcoinURI =>
-      val canSendOffChain = Try(btcURI.getAmount).map(coin2MSat).filter(msat => ChannelManager.estimateAIRCanSend >= msat.amount).isSuccess
-      if (canSendOffChain && btcURI.getLightningRequest != null) <(app.TransData recordValue btcURI.getLightningRequest, onFail)(_ => checkTransData)
-      else FragWallet.worker.sendBtcPopup(btcURI)
-      walletPager setCurrentItem 1
+    app.TransData checkAndMaybeErase {
+      case _: NodeAnnouncement => me goTo classOf[LNStartFundActivity]
+      case FragWallet.OPEN_RECEIVE_MENU => goReceivePayment(null): Unit
+      case FragWallet.REDIRECT => goOps(null): Unit
 
-    case someLNUrl: LNUrl =>
-      if (someLNUrl.isWithdraw) {
-        val withdrawRequest = WithdrawRequest.fromURI(someLNUrl.uri)
-        me doReceivePayment Some(withdrawRequest, someLNUrl)
-      } else if (someLNUrl.isAuth) showAuthForm(someLNUrl)
-      else fetch1stLevelUrl(someLNUrl)
-      walletPager setCurrentItem 1
+      case btcURI: BitcoinURI =>
+        val canSendOffChain = Try(btcURI.getAmount).map(coin2MSat).filter(msat => ChannelManager.estimateAIRCanSend >= msat.amount).isSuccess
+        if (canSendOffChain && btcURI.getLightningRequest != null) <(app.TransData recordValue btcURI.getLightningRequest, onFail)(_ => checkTransData)
+        else FragWallet.worker.sendBtcPopup(btcURI)
 
-    case pr: PaymentRequest =>
-      val ourNetPrefix = PaymentRequest.prefixes(LNParams.chainHash)
-      if (ourNetPrefix != pr.prefix) app quickToast err_nothing_useful
-      else if (!pr.isFresh) app quickToast dialog_pr_expired
-      else FragWallet.worker.standardOffChainSend(pr)
-      walletPager setCurrentItem 1
+      case lnUrl: LNUrl =>
+        if (lnUrl.isWithdraw) {
+          val withdrawRequest = WithdrawRequest.fromURI(lnUrl.uri)
+          me doReceivePayment Some(withdrawRequest, lnUrl)
+        } else if (lnUrl.isAuth) showAuthForm(lnUrl)
+        else fetch1stLevelUrl(lnUrl)
 
-    case _ =>
+      case pr: PaymentRequest =>
+        val ourNetPrefix = PaymentRequest.prefixes(LNParams.chainHash)
+        if (ourNetPrefix != pr.prefix) app quickToast err_nothing_useful
+        else if (!pr.isFresh) app quickToast dialog_pr_expired
+        else FragWallet.worker.standardOffChainSend(pr)
+
+      case _ =>
+    }
   }
 
   // LNURL
@@ -350,7 +351,7 @@ class WalletActivity extends NfcReaderActivity with ScanActivity { me =>
       mkCheckFormNeutral(_.dismiss, none, _ => share(linkingPubKey), baseTextBuilder(explanation), dialog_ok, -1, dialog_share)
     }
 
-    def doLogin(alert: AlertDialog) = rm(alert) {
+    def doAuth(alert: AlertDialog) = rm(alert) {
       val secondLevelRequestUri = lnUrl.uri.buildUpon.appendQueryParameter("sig", Tools.sign(dataToSign, linkingPrivKey).toHex).appendQueryParameter("key", linkingPubKey)
       queue.map(_ => get(secondLevelRequestUri.build.toString, false).connectTimeout(15000).body).map(LNUrl.guardResponse).foreach(_ => onAuthSuccess.run, onFail)
       app quickToast ln_url_resolving
@@ -363,7 +364,7 @@ class WalletActivity extends NfcReaderActivity with ScanActivity { me =>
 
     if (32 == dataToSign.length) {
       val title = updateView2Blue(oldView = str2View(new String), s"<big>${lnUrl.uri.getHost}</big>")
-      mkCheckFormNeutral(doLogin, none, wut, baseBuilder(title, null), dialog_login, dialog_cancel, dialog_info)
+      mkCheckFormNeutral(doAuth, none, wut, baseBuilder(title, null), dialog_login, dialog_cancel, dialog_info)
     } else onFail(s"Challenge=$k1 is not a valid 32-byte hex-encoded string")
   }
 

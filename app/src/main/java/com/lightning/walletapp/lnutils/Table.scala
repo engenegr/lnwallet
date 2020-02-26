@@ -153,7 +153,6 @@ object PayMarketTable extends Table {
   val (table, search, lnurl, text, lastMsat, lastDate, image) = ("paymarket", "search", "lnurl", "text", "lastmsat", "lastdate", "image")
   val newSql = s"INSERT OR IGNORE INTO $table ($lnurl, $text, $lastMsat, $lastDate, $image) VALUES (?, ?, ?, ?, ?)"
   val newVirtualSql = s"INSERT INTO $fts$table ($search, $lnurl) VALUES (?, ?)"
-  final val NOIMAGE = Array.emptyByteArray
 
   val selectRecentSql = s"SELECT * FROM $table ORDER BY $lastDate DESC LIMIT 96"
   val searchSql = s"SELECT * FROM $table WHERE $lnurl IN (SELECT $lnurl FROM $fts$table WHERE $search MATCH ? LIMIT 96)"
@@ -167,7 +166,7 @@ object PayMarketTable extends Table {
     CREATE TABLE IF NOT EXISTS $table (
       $id INTEGER PRIMARY KEY AUTOINCREMENT, $lnurl STRING NOT NULL UNIQUE,
       $text STRING NOT NULL, $lastMsat INTEGER NOT NULL, $lastDate INTEGER NOT NULL,
-      $image BLOB NOT NULL
+      $image STRING NOT NULL
     );
 
     /* lnurl index is created automatically since field is UNIQUE */
@@ -177,7 +176,7 @@ object PayMarketTable extends Table {
 
 trait Table { val (id, fts) = "_id" -> "fts4" }
 class LNOpenHelper(context: Context, name: String)
-  extends SQLiteOpenHelper(context, name, null, 9) {
+  extends SQLiteOpenHelper(context, name, null, 10) {
 
   val base = getWritableDatabase
   val asString: Any => String = {
@@ -219,6 +218,9 @@ class LNOpenHelper(context: Context, name: String)
   def onUpgrade(dbs: SQLiteDatabase, v0: Int, v1: Int) = {
     // Old version of RouteTable had a useless expiry column
     dbs execSQL s"DROP TABLE IF EXISTS ${RouteTable.table}"
+
+    dbs execSQL s"DROP TABLE IF EXISTS ${PayMarketTable.table}"
+    dbs execSQL s"DROP TABLE IF EXISTS ${PayMarketTable.fts}${PayMarketTable.table}"
 
     // Should work even for updates across many version ranges
     // because each table and index has CREATE IF EXISTS prefix

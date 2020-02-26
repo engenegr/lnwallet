@@ -22,8 +22,6 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.res.Configuration;
 import android.content.res.TypedArray;
-import android.graphics.Color;
-import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 import android.os.Parcel;
 import android.os.Parcelable;
@@ -34,14 +32,9 @@ import android.support.v4.view.GravityCompat;
 import android.support.v4.view.ViewCompat;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.graphics.drawable.DrawerArrowDrawable;
-import android.support.v7.view.menu.MenuBuilder;
-import android.support.v7.view.menu.MenuItemImpl;
 import android.support.v7.widget.CardView;
-import android.support.v7.widget.LinearLayoutManager;
 import android.util.AttributeSet;
-import android.view.GestureDetector;
 import android.view.MenuItem;
-import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
@@ -52,15 +45,11 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.arlib.floatingsearchview.util.Util;
-import com.arlib.floatingsearchview.util.adapter.GestureDetectorListenerAdapter;
 import com.arlib.floatingsearchview.util.adapter.TextWatcherAdapter;
 import com.arlib.floatingsearchview.util.view.SearchInputView;
-
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
-
 import com.lightning.walletapp.R;
-import java.util.List;
 
 /**
  * A search UI widget that implements a floating search box also called persistent
@@ -77,22 +66,6 @@ public class FloatingSearchView extends FrameLayout {
     private final static long CLEAR_BTN_FADE_ANIM_DURATION = 500;
     private final static int CLEAR_BTN_WIDTH_DP = 48;
 
-    private final static int MENU_ICON_ANIM_DURATION = 250;
-
-    public final static int LEFT_ACTION_MODE_SHOW_HAMBURGER = 1;
-    public final static int LEFT_ACTION_MODE_SHOW_SEARCH = 2;
-    public final static int LEFT_ACTION_MODE_SHOW_HOME = 3;
-    public final static int LEFT_ACTION_MODE_NO_LEFT_ACTION = 4;
-    private final static int LEFT_ACTION_MODE_NOT_SET = -1;
-
-    @Retention(RetentionPolicy.SOURCE)
-    @IntDef({LEFT_ACTION_MODE_SHOW_HAMBURGER, LEFT_ACTION_MODE_SHOW_SEARCH,
-            LEFT_ACTION_MODE_SHOW_HOME, LEFT_ACTION_MODE_NO_LEFT_ACTION, LEFT_ACTION_MODE_NOT_SET})
-    public @interface LeftActionMode {
-    }
-
-    @LeftActionMode
-    private final static int ATTRS_SEARCH_BAR_LEFT_ACTION_MODE_DEFAULT = LEFT_ACTION_MODE_NO_LEFT_ACTION;
     private final static boolean ATTRS_DISMISS_ON_OUTSIDE_TOUCH_DEFAULT = true;
     private final static boolean ATTRS_DISMISS_ON_KEYBOARD_DISMISS_DEFAULT = false;
     private final static boolean ATTRS_SEARCH_BAR_SHOW_SEARCH_KEY_DEFAULT = true;
@@ -164,62 +137,6 @@ public class FloatingSearchView extends FrameLayout {
          * @param currentQuery the text that is currently set in the query TextView
          */
         void onSearchAction(String currentQuery);
-    }
-
-    /**
-     * Interface for implementing a callback to be
-     * invoked when the left menu (navigation menu) is
-     * clicked.
-     * <p/>
-     * Note: This is only relevant when leftActionMode is
-     * set to {@value #LEFT_ACTION_MODE_SHOW_HAMBURGER}
-     */
-    public interface OnLeftMenuClickListener {
-
-        /**
-         * Called when the menu button was
-         * clicked and the menu's state is now opened.
-         */
-        void onMenuOpened();
-
-        /**
-         * Called when the back button was
-         * clicked and the menu's state is now closed.
-         */
-        void onMenuClosed();
-    }
-
-    /**
-     * Interface for implementing a callback to be
-     * invoked when the home action button (the back arrow)
-     * is clicked.
-     * <p/>
-     * Note: This is only relevant when leftActionMode is
-     * set to {@value #LEFT_ACTION_MODE_SHOW_HOME}
-     */
-    public interface OnHomeActionClickListener {
-
-        /**
-         * Called when the home button was
-         * clicked.
-         */
-        void onHomeClicked();
-    }
-
-    /**
-     * Interface for implementing a listener to listen
-     * when an item in the action (the item can be presented as an action
-     * ,or as a menu item in the overflow menu) menu has been selected.
-     */
-    public interface OnMenuItemClickListener {
-
-        /**
-         * Called when a menu item in has been
-         * selected.
-         *
-         * @param item the selected menu item.
-         */
-        void onActionMenuItemSelected(MenuItem item);
     }
 
     /**
@@ -735,16 +652,6 @@ public class FloatingSearchView extends FrameLayout {
         }
     }
 
-    private void changeIcon(ImageView imageView, Drawable newIcon, boolean withAnim) {
-        imageView.setImageDrawable(newIcon);
-        if (withAnim) {
-            ObjectAnimator fadeInVoiceInputOrClear = ObjectAnimator.ofFloat(imageView, "alpha", 0.0f, 1.0f);
-            fadeInVoiceInputOrClear.start();
-        } else {
-            imageView.setAlpha(1.0f);
-        }
-    }
-
     /**
      * Sets the listener that will listen for query
      * changes as they are being typed.
@@ -753,85 +660,6 @@ public class FloatingSearchView extends FrameLayout {
      */
     public void setOnQueryChangeListener(OnQueryChangeListener listener) {
         this.mQueryListener = listener;
-    }
-
-    /**
-     * Sets the listener that will be called when
-     * an action that completes the current search
-     * session has occurred and the search lost focus.
-     * <p/>
-     * <p>When called, a client would ideally grab the
-     * search or suggestion query from the callback parameter or
-     * from {@link #getQuery() getquery} and perform the necessary
-     * query against its data source.</p>
-     *
-     * @param listener listener for query completion
-     */
-    public void setOnSearchListener(OnSearchListener listener) {
-        this.mSearchListener = listener;
-    }
-
-    /**
-     * Sets the listener that will be called when the focus
-     * of the search has changed.
-     *
-     * @param listener listener for search focus changes
-     */
-    public void setOnFocusChangeListener(OnFocusChangeListener listener) {
-        this.mFocusChangeListener = listener;
-    }
-
-    /**
-     * Sets the listener that will be called when the
-     * clear search text action button (the x to the right
-     * of the search text) is clicked.
-     *
-     * @param listener
-     */
-    public void setOnClearSearchActionListener(OnClearSearchActionListener listener) {
-        this.mOnClearSearchActionListener = listener;
-    }
-
-    private void openMenuDrawable(final DrawerArrowDrawable drawerArrowDrawable, boolean withAnim) {
-        if (withAnim) {
-            ValueAnimator anim = ValueAnimator.ofFloat(0.0f, 1.0f);
-            anim.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
-                @Override
-                public void onAnimationUpdate(ValueAnimator animation) {
-
-                    float value = (Float) animation.getAnimatedValue();
-                    drawerArrowDrawable.setProgress(value);
-                }
-            });
-            anim.setDuration(MENU_ICON_ANIM_DURATION);
-            anim.start();
-        } else {
-            drawerArrowDrawable.setProgress(1.0f);
-        }
-    }
-
-    private void closeMenuDrawable(final DrawerArrowDrawable drawerArrowDrawable, boolean withAnim) {
-        if (withAnim) {
-            ValueAnimator anim = ValueAnimator.ofFloat(1.0f, 0.0f);
-            anim.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
-                @Override
-                public void onAnimationUpdate(ValueAnimator animation) {
-
-                    float value = (Float) animation.getAnimatedValue();
-                    drawerArrowDrawable.setProgress(value);
-                }
-            });
-            anim.setDuration(MENU_ICON_ANIM_DURATION);
-            anim.start();
-        } else {
-            drawerArrowDrawable.setProgress(0.0f);
-        }
-    }
-
-    private boolean isRTL() {
-
-        Configuration config = getResources().getConfiguration();
-        return ViewCompat.getLayoutDirection(this) == ViewCompat.LAYOUT_DIRECTION_RTL;
     }
 
     @Override
@@ -987,14 +815,6 @@ public class FloatingSearchView extends FrameLayout {
 
     private DrawerLayout.DrawerListener mDrawerListener = new DrawerListener();
 
-    public void attachNavigationDrawerToMenuButton(@NonNull DrawerLayout drawerLayout) {
-        drawerLayout.addDrawerListener(mDrawerListener);
-    }
-
-    public void detachNavigationDrawerFromMenuButton(@NonNull DrawerLayout drawerLayout) {
-        drawerLayout.removeDrawerListener(mDrawerListener);
-    }
-
     @Override
     protected void onDetachedFromWindow() {
         super.onDetachedFromWindow();
@@ -1019,25 +839,6 @@ public class FloatingSearchView extends FrameLayout {
         @Override
         public void onDrawerStateChanged(int newState) {
 
-        }
-    }
-
-    private class NavDrawerLeftMenuClickListener implements OnLeftMenuClickListener {
-
-        DrawerLayout mDrawerLayout;
-
-        public NavDrawerLeftMenuClickListener(DrawerLayout drawerLayout) {
-            mDrawerLayout = drawerLayout;
-        }
-
-        @Override
-        public void onMenuOpened() {
-            mDrawerLayout.openDrawer(GravityCompat.START);
-        }
-
-        @Override
-        public void onMenuClosed() {
-            //do nothing
         }
     }
 }

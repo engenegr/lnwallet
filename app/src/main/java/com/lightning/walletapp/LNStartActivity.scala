@@ -15,14 +15,15 @@ import com.lightning.walletapp.lnutils.ImplicitConversions._
 import com.lightning.walletapp.lnutils.olympus.OlympusWrap._
 import com.lightning.walletapp.lnutils.ImplicitJsonFormats._
 
-import scodec.bits.{Bases, ByteVector}
 import fr.acinq.bitcoin.{Bech32, Crypto, MilliSatoshi}
 import com.lightning.walletapp.ln.RoutingInfoTag.PaymentRouteVec
 import com.lightning.walletapp.Utils.app.TransData.nodeLink
 import com.lightning.walletapp.lnutils.JsonHttpUtils.to
 import com.lightning.walletapp.helper.ThrottledWork
 import fr.acinq.bitcoin.Crypto.PublicKey
+import android.graphics.BitmapFactory
 import org.bitcoinj.uri.BitcoinURI
+import scodec.bits.ByteVector
 import android.os.Bundle
 import scala.util.Try
 
@@ -61,7 +62,7 @@ class LNStartActivity extends ScanActivity { me =>
       case _: BitcoinURI => me exitTo MainActivity.wallet
       case _: PaymentRequest => me exitTo MainActivity.wallet
       case _: NodeAnnouncement => me goTo classOf[LNStartFundActivity]
-      case _ => walletPager setCurrentItem 0
+      case _ => walletPager.setCurrentItem(0, false)
     }
 }
 
@@ -241,18 +242,22 @@ object PayRequest {
   type Route = Vector[KeyAndUpdate]
 }
 
-case class PayLinkInfo(imageBytes: Array[Byte], lnurl: LNUrl, text: String, lastMsat: MilliSatoshi, lastDate: Long)
+case class PayLinkInfo(image64: String, lnurl: LNUrl, text: String, lastMsat: MilliSatoshi, lastDate: Long) {
+  lazy val bitmap = for (imageBytes <- imageBytesTry) yield BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length)
+  def imageBytesTry = Try(org.spongycastle.util.encoders.Base64 decode image64)
+}
+
 case class PayRequest(callback: String, maxSendable: Long, minSendable: Long, metadata: String) extends LNUrlData {
   private val decodedMetadata = to[PayMetaData](metadata)
 
-  val metaDataImageArrays = for {
+  val metaDataImageBase64s = for {
     Vector("image/png;base64" | "image/jpeg;base64", content) <- decodedMetadata
     _ = require(content.length <= 136536, s"Image is too heavy, base64 length=${content.length}")
-  } yield ByteVector.fromValidBase64(content, alphabet = Bases.Alphabets.Base64).toArray
+  } yield content
 
   val callbackUri = LNUrl.checkHost(callback)
   val minCanSend = minSendable max LNParams.minPaymentMsat
-  private val metaDataTexts = decodedMetadata.collect { case Vector("text/plain", content) => content }
+  private val metaDataTexts = decodedMetadata.collect { case Vector("text/plain", data) => data }
   require(metaDataTexts.size == 1, "There must be exactly one text/plain entry in metadata")
   require(minCanSend <= maxSendable, s"$maxSendable is less than min $minCanSend")
   val metaDataTextPlain = metaDataTexts.head

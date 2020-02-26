@@ -297,9 +297,9 @@ object BadEntityWrap {
 object PayMarketWrap {
   def rm(url: String) = db.change(PayMarketTable.killSql, url)
   def saveLink(lnUrl: LNUrl, payReq: PayRequest, msat: MilliSatoshi) = db txWrap {
-    val thumbnailArray = payReq.metaDataImageArrays.headOption.getOrElse(PayMarketTable.NOIMAGE)
-    db.change(PayMarketTable.updInfoSql, payReq.metaDataTextPlain, msat.toLong, System.currentTimeMillis, thumbnailArray, lnUrl.request)
-    db.change(PayMarketTable.newSql, lnUrl.request, payReq.metaDataTextPlain, msat.toLong, System.currentTimeMillis, thumbnailArray)
+    val thumbnailImageString64 = payReq.metaDataImageBase64s.headOption.getOrElse(new String)
+    db.change(PayMarketTable.updInfoSql, payReq.metaDataTextPlain, msat.toLong, System.currentTimeMillis, thumbnailImageString64, lnUrl.request)
+    db.change(PayMarketTable.newSql, lnUrl.request, payReq.metaDataTextPlain, msat.toLong, System.currentTimeMillis, thumbnailImageString64)
     db.change(PayMarketTable.newVirtualSql, s"${lnUrl.uri.getHost} ${payReq.metaDataTextPlain}", lnUrl.request)
   }
 
@@ -308,7 +308,7 @@ object PayMarketWrap {
   def byRecent = db select PayMarketTable.selectRecentSql
 
   def toLinkInfo(rc: RichCursor) =
-    PayLinkInfo(imageBytes = rc bytes PayMarketTable.image, lnurl = LNUrl(rc string PayMarketTable.lnurl),
+    PayLinkInfo(image64 = rc string PayMarketTable.image, lnurl = LNUrl(rc string PayMarketTable.lnurl),
       text = rc string PayMarketTable.text, lastMsat = MilliSatoshi(rc long PayMarketTable.lastMsat),
       lastDate = rc long PayMarketTable.lastDate)
 }

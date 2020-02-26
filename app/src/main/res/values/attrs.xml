@@ -1,4 +1,3 @@
-<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <declare-styleable name="FloatingSearchView">
         <attr name="floatingSearch_searchBarWidth" format="dimension"/>
@@ -32,16 +31,6 @@
         <attr name="floatingSearch_dividerColor" format="color"/>
         <attr name="floatingSearch_dimBackground" format="boolean"/>
         <attr name="floatingSearch_suggestionRightIconColor" format="color"/>
-    </declare-styleable>
-
-    <declare-styleable name="DilatingDotsProgressBar">
-        <attr name="dd_scaleMultiplier" format="float"/>
-        <attr name="dd_animationDuration" format="integer"/>
-        <attr name="dd_horizontalSpacing" format="dimension"/>
-        <attr name="dd_numDots" format="integer"/>
-        <attr name="dd_endColor" format="color"/>
-        <attr name="android:radius"/>
-        <attr name="android:color"/>
     </declare-styleable>
 
     <declare-styleable name="BaseCircleIndicator">
