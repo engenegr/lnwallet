@@ -97,14 +97,18 @@ class FragPayMarketWorker(val host: WalletActivity, frag: View) extends HumanTim
       val lastInfo = lastPaid.format(me time new java.util.Date(info.lastDate), denom parsedWithSign info.lastMsat)
 
       view setOnClickListener onButtonTap {
-        if (!thisLinkSelectedCurrently) {
+        // Do not proceed if 1st call is being made or related payment is in-flight
+        val isProcessing = ChannelManager.activeInFlightHashes.contains(info.paymentHash)
+        val canProceed = !(isProcessing || thisLinkSelectedCurrently)
+
+        if (canProceed) {
           worker.replaceWork(info.lnurl)
           updPayLinksList.run
         }
       }
 
       view setOnLongClickListener onLongButtonTap {
-        def removePayLink = wrap(reload)(PayMarketWrap rm info.lnurl)
+        def removePayLink = wrap(PayMarketWrap.uiNotify)(PayMarketWrap rm info.lnurl)
         val bld = host.baseTextBuilder(removeLink.html).setCustomTitle(info.lnurl.uri.getHost)
         mkCheckForm(alert => rm(alert)(removePayLink), none, bld, dialog_ok, dialog_cancel)
       }

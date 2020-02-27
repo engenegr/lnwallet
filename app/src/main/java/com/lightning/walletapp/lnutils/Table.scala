@@ -150,13 +150,13 @@ object RevokedInfoTable extends Table {
 }
 
 object PayMarketTable extends Table {
-  val (table, search, lnurl, text, lastMsat, lastDate, image) = ("paymarket", "search", "lnurl", "text", "lastmsat", "lastdate", "image")
-  val newSql = s"INSERT OR IGNORE INTO $table ($lnurl, $text, $lastMsat, $lastDate, $image) VALUES (?, ?, ?, ?, ?)"
+  val (table, search, lnurl, text, lastMsat, lastDate, hash, image) = ("paymarket", "search", "lnurl", "text", "lastmsat", "lastdate", "hash", "image")
+  val newSql = s"INSERT OR IGNORE INTO $table ($lnurl, $text, $lastMsat, $lastDate, $hash, $image) VALUES (?, ?, ?, ?, ?, ?)"
   val newVirtualSql = s"INSERT INTO $fts$table ($search, $lnurl) VALUES (?, ?)"
 
   val selectRecentSql = s"SELECT * FROM $table ORDER BY $lastDate DESC LIMIT 48"
   val searchSql = s"SELECT * FROM $table WHERE $lnurl IN (SELECT $lnurl FROM $fts$table WHERE $search MATCH ?) LIMIT 96"
-  val updInfoSql = s"UPDATE $table SET $text = ?, $lastMsat = ?, $lastDate = ?, $image = ? WHERE $lnurl = ?"
+  val updInfoSql = s"UPDATE $table SET $text = ?, $lastMsat = ?, $lastDate = ?, $hash = ?, $image = ? WHERE $lnurl = ?"
   val killSql = s"DELETE FROM $table WHERE $lnurl = ?"
 
   // Payment links are searchable by their text descriptions (text metadata + domain name)
@@ -166,7 +166,7 @@ object PayMarketTable extends Table {
     CREATE TABLE IF NOT EXISTS $table (
       $id INTEGER PRIMARY KEY AUTOINCREMENT, $lnurl STRING NOT NULL UNIQUE,
       $text STRING NOT NULL, $lastMsat INTEGER NOT NULL, $lastDate INTEGER NOT NULL,
-      $image STRING NOT NULL
+      $hash STRING NOT NULL, $image STRING NOT NULL
     );
 
     /* lnurl index is created automatically since field is UNIQUE */
@@ -176,7 +176,7 @@ object PayMarketTable extends Table {
 
 trait Table { val (id, fts) = "_id" -> "fts4" }
 class LNOpenHelper(context: Context, name: String)
-  extends SQLiteOpenHelper(context, name, null, 10) {
+  extends SQLiteOpenHelper(context, name, null, 11) {
 
   val base = getWritableDatabase
   val asString: Any => String = {

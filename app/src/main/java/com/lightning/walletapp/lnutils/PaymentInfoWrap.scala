@@ -86,7 +86,7 @@ object PaymentInfoWrap extends PaymentInfoBag with ChannelListener { me =>
 
     db.change(PaymentTable.newVirtualSql, rd.queryText, pr.paymentHash)
     db.change(PaymentTable.newSql, pr.toJson, preimage, 1 /* incoming payment */, WAITING, System.currentTimeMillis,
-      PaymentDescription(None, None, description).toJson, pr.paymentHash, amount.toLong, 0L /* lastMsat with fees */,
+      PaymentDescription(None, description).toJson, pr.paymentHash, amount.toLong, 0L /* lastMsat with fees */,
       0L /* lastExpiry, may later be updated for reflexive payments */, NOCHANID)
 
     uiNotify
@@ -296,10 +296,10 @@ object BadEntityWrap {
 
 object PayMarketWrap {
   def rm(lnUrl: LNUrl) = db.change(PayMarketTable.killSql, lnUrl.request)
-  def saveLink(lnUrl: LNUrl, payReq: PayRequest, msat: MilliSatoshi) = db txWrap {
-    val thumbnailImageString64 = payReq.metaDataImageBase64s.headOption.getOrElse(new String)
-    db.change(PayMarketTable.updInfoSql, payReq.metaDataTextPlain, msat.toLong, System.currentTimeMillis, thumbnailImageString64, lnUrl.request)
-    db.change(PayMarketTable.newSql, lnUrl.request, payReq.metaDataTextPlain, msat.toLong, System.currentTimeMillis, thumbnailImageString64)
+  def saveLink(lnUrl: LNUrl, payReq: PayRequest, msat: MilliSatoshi, hash: String) = db txWrap {
+    val thumbnailImageString64 = payReq.metaDataImageBase64s.headOption.getOrElse(default = new String)
+    db.change(PayMarketTable.updInfoSql, payReq.metaDataTextPlain, msat.toLong, System.currentTimeMillis, hash, thumbnailImageString64, lnUrl.request)
+    db.change(PayMarketTable.newSql, lnUrl.request, payReq.metaDataTextPlain, msat.toLong, System.currentTimeMillis, hash, thumbnailImageString64)
     db.change(PayMarketTable.newVirtualSql, s"${lnUrl.uri.getHost} ${payReq.metaDataTextPlain}", lnUrl.request)
   }
 
@@ -310,5 +310,5 @@ object PayMarketWrap {
   def toLinkInfo(rc: RichCursor) =
     PayLinkInfo(image64 = rc string PayMarketTable.image, lnurl = LNUrl(rc string PayMarketTable.lnurl),
       text = rc string PayMarketTable.text, lastMsat = MilliSatoshi(rc long PayMarketTable.lastMsat),
-      lastDate = rc long PayMarketTable.lastDate)
+      hash = rc string PayMarketTable.hash, lastDate = rc long PayMarketTable.lastDate)
 }

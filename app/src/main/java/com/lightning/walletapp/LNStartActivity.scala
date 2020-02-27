@@ -246,9 +246,10 @@ object PayRequest {
   type Route = Vector[KeyAndUpdate]
 }
 
-case class PayLinkInfo(image64: String, lnurl: LNUrl, text: String, lastMsat: MilliSatoshi, lastDate: Long) {
-  lazy val bitmap = for (imageBytes <- imageBytesTry) yield BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length)
+case class PayLinkInfo(image64: String, lnurl: LNUrl, text: String, lastMsat: MilliSatoshi, hash: String, lastDate: Long) {
+  lazy val bitmap = for (bytes <- imageBytesTry) yield BitmapFactory.decodeByteArray(bytes, 0, bytes.length)
   def imageBytesTry = Try(org.spongycastle.util.encoders.Base64 decode image64)
+  lazy val paymentHash = ByteVector fromValidHex hash
 }
 
 case class PayRequest(callback: String, maxSendable: Long, minSendable: Long, metadata: String) extends LNUrlData {
