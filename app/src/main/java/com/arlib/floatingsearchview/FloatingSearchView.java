@@ -311,7 +311,7 @@ public class FloatingSearchView extends FrameLayout {
             public void onTextChanged(final CharSequence s, int start, int before, int count) {
                 //todo investigate why this is called twice when pressing back on the keyboard
 
-                if (mSkipTextChangeEvent || !mIsFocused) {
+                if (mSkipTextChangeEvent) {
                     mSkipTextChangeEvent = false;
                 } else {
                     if (mSearchInput.getText().toString().length() != 0 &&
@@ -323,7 +323,7 @@ public class FloatingSearchView extends FrameLayout {
                         mClearButton.setVisibility(View.INVISIBLE);
                     }
 
-                    if (mQueryListener != null && mIsFocused && !mOldQuery.equals(mSearchInput.getText().toString())) {
+                    if (mQueryListener != null && !mOldQuery.equals(mSearchInput.getText().toString())) {
                         mQueryListener.onSearchTextChanged(mOldQuery, mSearchInput.getText().toString());
                     }
 

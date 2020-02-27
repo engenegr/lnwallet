@@ -16,11 +16,11 @@ import com.lightning.walletapp.lnutils.ImplicitConversions._
 
 import scala.util.{Success, Try}
 import org.bitcoinj.core.{Block, FilteredBlock, Peer}
-import com.lightning.walletapp.lnutils.JsonHttpUtils.{queue, to}
 import com.lightning.walletapp.lnutils.IconGetter.{bigFont, scrWidth}
 import com.lightning.walletapp.lnutils.{LocalBackup, PaymentInfoWrap}
 import com.lightning.walletapp.ln.crypto.Sphinx.DecryptedFailurePacket
 import io.github.douglasjunior.androidSimpleTooltip.SimpleTooltip
+import com.lightning.walletapp.lnutils.JsonHttpUtils.queue
 import android.support.v4.app.FragmentStatePagerAdapter
 import org.ndeftools.util.activity.NfcReaderActivity
 import com.lightning.walletapp.helper.AwaitService

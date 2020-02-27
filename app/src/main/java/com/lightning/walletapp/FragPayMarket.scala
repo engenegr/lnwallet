@@ -1,29 +1,27 @@
 package com.lightning.walletapp
 
-import java.io.InterruptedIOException
-
-import android.database.{ContentObserver, Cursor}
+import android.widget._
+import com.lightning.walletapp.Utils._
+import com.lightning.walletapp.ln.Tools._
+import com.lightning.walletapp.R.string._
+import com.lightning.walletapp.ln.LNParams._
 import com.lightning.walletapp.FragPayMarket._
+import com.lightning.walletapp.lnutils.IconGetter._
+import com.lightning.walletapp.lnutils.ImplicitConversions._
+
+import android.os.{Bundle, Handler}
+import android.database.{ContentObserver, Cursor}
 import android.view.{LayoutInflater, View, ViewGroup}
+import com.lightning.walletapp.lnutils.{PayMarketTable, PayMarketWrap}
+import com.lightning.walletapp.helper.{ReactLoader, RichCursor, ThrottledWork}
+
+import android.support.v4.app.LoaderManager.LoaderCallbacks
+import android.transition.TransitionManager.beginDelayedTransition
 import com.arlib.floatingsearchview.FloatingSearchView.OnQueryChangeListener
 import com.arlib.floatingsearchview.FloatingSearchView
-import com.lightning.walletapp.Utils._
-import android.support.v4.app.Fragment
-import com.lightning.walletapp.R.string._
-import android.widget._
-import android.os.{Bundle, Handler}
-import android.support.v4.app.LoaderManager.LoaderCallbacks
-import android.support.v4.content.Loader
-import android.transition.TransitionManager.beginDelayedTransition
 import com.lightning.walletapp.LNUrl.LNUrlAndData
-import com.lightning.walletapp.helper.{ReactLoader, RichCursor, ThrottledWork}
-import com.lightning.walletapp.ln.LNParams._
-import com.lightning.walletapp.ln.Tools._
-import com.lightning.walletapp.lnutils.ImplicitConversions._
-import com.lightning.walletapp.lnutils.IconGetter._
-import com.lightning.walletapp.lnutils.JsonHttpUtils._
-import com.lightning.walletapp.lnutils.{LocalBackup, PayMarketTable, PayMarketWrap}
-import rx.lang.scala.{Subscription, Observable => Obs}
+import android.support.v4.content.Loader
+import android.support.v4.app.Fragment
 
 
 object FragPayMarket {
@@ -33,6 +31,7 @@ object FragPayMarket {
 class FragPayMarket extends Fragment {
   override def onCreateView(inf: LayoutInflater, viewGroup: ViewGroup, bundle: Bundle) = inf.inflate(R.layout.frag_view_pager_paymarket, viewGroup, false)
   override def onViewCreated(view: View, state: Bundle) = if (app.isAlive) worker = new FragPayMarketWorker(getActivity.asInstanceOf[WalletActivity], view)
+  override def setUserVisibleHint(isVisibleToUser: Boolean) = if (isAdded && isVisibleToUser && worker.allPayLinks.isEmpty) PayMarketWrap.uiNotify
 }
 
 class FragPayMarketWorker(val host: WalletActivity, frag: View) extends HumanTimeDisplay { me =>
@@ -98,8 +97,8 @@ class FragPayMarketWorker(val host: WalletActivity, frag: View) extends HumanTim
 
       view setOnClickListener onButtonTap {
         // Do not proceed if 1st call is being made or related payment is in-flight
-        val isProcessing = ChannelManager.activeInFlightHashes.contains(info.paymentHash)
-        val canProceed = !(isProcessing || thisLinkSelectedCurrently)
+        val inFlight = ChannelManager.activeInFlightHashes.contains(info.paymentHash)
+        val canProceed = !(inFlight || thisLinkSelectedCurrently)
 
         if (canProceed) {
           worker.replaceWork(info.lnurl)
@@ -127,12 +126,10 @@ class FragPayMarketWorker(val host: WalletActivity, frag: View) extends HumanTim
     adapter.notifyDataSetChanged
   }
 
-  def reload = android.support.v4.app.LoaderManager.getInstance(host).restartLoader(2, null, loaderCallbacks).forceLoad
+  private def reload = android.support.v4.app.LoaderManager.getInstance(host).restartLoader(2, null, loaderCallbacks).forceLoad
   val observer = new ContentObserver(new Handler) { override def onChange(askedFromSelf: Boolean) = if (!askedFromSelf) reload }
   paySearch setOnQueryChangeListener new OnQueryChangeListener { def onSearchTextChanged(q0: String, q1: String) = reload }
   host.getContentResolver.registerContentObserver(db sqlPath PayMarketTable.table, true, observer)
   gridView setNumColumns math.round(scrWidth / 2.4).toInt
   gridView setAdapter adapter
-
-  reload // TODO: make it lazy
 }
