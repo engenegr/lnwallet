@@ -4,6 +4,7 @@ import android.view._
 import com.lightning.walletapp.ln._
 import android.text.format.DateUtils._
 import com.lightning.walletapp.Utils._
+import com.lightning.walletapp.LNUrl._
 import com.lightning.walletapp.ln.wire._
 import com.lightning.walletapp.R.string._
 import com.lightning.walletapp.ln.Tools._
@@ -258,7 +259,7 @@ class WalletActivity extends NfcReaderActivity with ScanActivity { me =>
 
   // EXTERNAL DATA CHECK
 
-  def checkTransData = {
+  def checkTransData: Unit = {
     walletPager.setCurrentItem(1, false)
 
     app.TransData checkAndMaybeErase {
@@ -273,8 +274,8 @@ class WalletActivity extends NfcReaderActivity with ScanActivity { me =>
 
       case lnUrl: LNUrl =>
         if (lnUrl.isAuth) showAuthForm(lnUrl)
-        else if (lnUrl.isWithdraw) me doReceivePayment Some(WithdrawRequest fromURI lnUrl.uri, lnUrl)
-        else fetch1stLevelUrl(onSuccess = resolveLNUrl(lnUrl), onFailure = onFail, lnUrl)
+        else if (lnUrl.isWithdraw) me doReceivePayment Some(lnUrl -> lnUrl.constructWithdrawFromURIParameters)
+        else lnUrl.lnUrlAndDataObs.doOnSubscribe(app quickToast ln_url_resolving).foreach(data => UITask(me resolveLNUrl data).run, onFail)
 
       case pr: PaymentRequest =>
         val ourNetPrefix = PaymentRequest.prefixes(LNParams.chainHash)
@@ -288,17 +289,11 @@ class WalletActivity extends NfcReaderActivity with ScanActivity { me =>
 
   // LNURL
 
-  def fetch1stLevelUrl(onSuccess: LNUrlData => Unit, onFailure: Throwable => Unit, lnUrl: LNUrl) = {
-    val awaitRequest = get(lnUrl.uri.toString, false).header("Connection", "close").connectTimeout(15000)
-    <(to[LNUrlData](LNUrl guardResponse awaitRequest.body).validate(lnUrl), onFailure)(onSuccess)
-    app quickToast ln_url_resolving
-  }
-
-  def resolveLNUrl(lnUrl: LNUrl)(data: LNUrlData): Unit = data match {
-    case response: PayRequest => FragWallet.worker.lnurlPayOffChainSend(lnUrl, response)
-    case response: WithdrawRequest => me doReceivePayment Some(response, lnUrl)
-    case response: IncomingChannelRequest => me initIncoming response
-    case response: HostedChannelRequest => me goLNStartFund response
+  val resolveLNUrl: PartialFunction[LNUrlAndData, Unit] = {
+    case (lnUrl, response: PayRequest) => FragWallet.worker.lnurlPayOffChainSend(lnUrl, response)
+    case (lnUrl, response: WithdrawRequest) => me doReceivePayment Some(lnUrl -> response)
+    case (_, response: IncomingChannelRequest) => me initIncoming response
+    case (_, response: HostedChannelRequest) => me goLNStartFund response
     case _ => app quickToast err_nothing_useful
   }
 
@@ -309,16 +304,12 @@ class WalletActivity extends NfcReaderActivity with ScanActivity { me =>
 
   def initIncoming(incoming: IncomingChannelRequest) = {
     val initialListener = new ConnectionListener { self =>
-      // TODO: rewrite connection manager to remove mutable var hack
-
-      var notCalledYet = true
-      override def onDisconnect(nodeId: PublicKey) = ConnectionManager.listeners -= self
-      override def onOperational(nodeId: PublicKey, isCompatible: Boolean) = if (isCompatible && notCalledYet) {
+      override def onDisconnect(nodeId: PublicKey) = if (nodeId == incoming.pubKey) ConnectionManager.listeners -= self
+      override def onOperational(nodeId: PublicKey, isCompatible: Boolean) = if (nodeId == incoming.pubKey && isCompatible) {
         queue.map(_ => incoming.requestChannel.body).map(LNUrl.guardResponse).foreach(none, onFail)
-        notCalledYet = false
       }
 
-      override def onMessage(nodeId: PublicKey, msg: LightningMessage) = msg match {
+      override def onMessage(nodeId: PublicKey, message: LightningMessage) = message match {
         case open: OpenChannel if !open.channelFlags.isPublic => onOpenOffer(nodeId, open)
         case _ => // Ignore anything else including public channel offers
       }
@@ -369,12 +360,11 @@ class WalletActivity extends NfcReaderActivity with ScanActivity { me =>
 
   // BUTTONS REACTIONS
 
-  type RequestAndLNUrl = (WithdrawRequest, LNUrl)
-  def doReceivePayment(extra: Option[RequestAndLNUrl] = None) = {
+  def doReceivePayment(extra: Option[LNUrlAndWithdraw] = None) = {
     val viableChannels = ChannelManager.all.filter(isOpeningOrOperational)
     val withRoutes = viableChannels.filter(isOperational).flatMap(channelAndHop).toMap
 
-    // For now we a bounded to single largest channel
+    // For now we are bounded to single largest channel
     val receivables = withRoutes.keys.map(_.estCanReceiveMsat)
     val largestOne = if (receivables.isEmpty) 0L else receivables.max
     val maxCanReceive = MilliSatoshi(largestOne)
@@ -384,7 +374,7 @@ class WalletActivity extends NfcReaderActivity with ScanActivity { me =>
     val reserveUnspentWarning = getString(ln_receive_reserve) format humanShouldSpend
 
     extra match {
-      case Some(wr \ lnUrl) =>
+      case Some(lnUrl \ wr) =>
         val title = updateView2Blue(str2View(new String), app getString ln_receive_title)
         val finalMaxCanReceiveCapped = MilliSatoshi(wr.maxWithdrawable min maxCanReceive.amount)
 
@@ -448,5 +438,5 @@ class WalletActivity extends NfcReaderActivity with ScanActivity { me =>
 
   def goOps(top: View) = me goTo classOf[LNOpsActivity]
   def goAddChannel(top: View) = me goTo classOf[LNStartActivity]
-  def goReceivePayment(top: View) = doReceivePayment(extra = Option.empty)
+  def goReceivePayment(top: View) = doReceivePayment(extra = None)
 }

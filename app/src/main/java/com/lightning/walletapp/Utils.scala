@@ -15,29 +15,26 @@ import com.lightning.walletapp.lnutils.ImplicitConversions._
 import org.bitcoinj.wallet.Wallet.ExceededMaxTransactionSize
 import org.bitcoinj.wallet.Wallet.CouldNotAdjustDownwards
 import android.widget.AdapterView.OnItemClickListener
-
 import concurrent.ExecutionContext.Implicits.global
 import com.lightning.walletapp.lnutils.RatesSaver
 import android.support.v7.app.AppCompatActivity
 import android.support.v4.content.ContextCompat
 import ViewGroup.LayoutParams.WRAP_CONTENT
-import android.view.View.{OnClickListener, OnLongClickListener}
 import org.aviran.cookiebar2.CookieBar
 import android.app.AlertDialog.Builder
 import org.bitcoinj.wallet.SendRequest
 import fr.acinq.bitcoin.MilliSatoshi
-
 import language.implicitConversions
 import org.bitcoinj.script.Script
-
 import scala.concurrent.Future
 import android.content.Intent
 import android.os.Bundle
 import android.net.Uri
+
 import com.lightning.walletapp.lnutils.IconGetter.{maxDialog, scrWidth}
+import android.view.View.{OnClickListener, OnLongClickListener}
 import com.lightning.walletapp.ln.Tools.{none, runAnd, wrap}
 import org.bitcoinj.wallet.SendRequest.{emptyWallet, to}
-
 import scala.util.{Failure, Success, Try}
 import android.app.{AlertDialog, Dialog}
 import java.util.{Timer, TimerTask}
@@ -116,7 +113,7 @@ trait TimerActivity extends AppCompatActivity { me =>
   def negBuilder(neg: Int, title: View, body: View) = baseBuilder(title, body).setNegativeButton(neg, null)
 
   def toast(code: Int): Unit = toast(me getString code)
-  def toast(msg: String): Unit = try CookieBar.rebuild(me).setMessage(msg).setCookiePosition(CookieBar.BOTTOM).show catch none
+  def toast(msg: CharSequence): Unit = try CookieBar.rebuild(me).setMessage(msg).setCookiePosition(CookieBar.BOTTOM).show catch none
   def onFail(error: CharSequence): Unit = UITask(me showForm negBuilder(dialog_ok, null, error).create).run
   def onFail(error: Throwable): Unit = onFail(error.getMessage)
 

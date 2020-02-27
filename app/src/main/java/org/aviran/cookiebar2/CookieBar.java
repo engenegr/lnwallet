@@ -142,7 +142,7 @@ public class CookieBar {
             return this;
         }
 
-        public Builder setMessage(String message) {
+        public Builder setMessage(CharSequence message) {
             params.message = message;
             return this;
         }
@@ -274,7 +274,7 @@ public class CookieBar {
 
     final static class Params {
         public String title;
-        public String message;
+        public CharSequence message;
         public String action;
         public boolean enableSwipeToDismiss = true;
         public boolean enableAutoDismiss = true;

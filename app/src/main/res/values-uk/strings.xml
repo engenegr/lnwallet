@@ -320,7 +320,7 @@
     <string name="ln_ops_start_fund_incoming_channel">вхідний канал</string>
     <string name="ln_ops_start_fund_hosted_channel">HOSTED-КАНАЛ</string>
 
-    <string name="ln_url_payment_sending">Відправлення %1$s</string>
+
     <string name="ln_url_resolving">Підключення до сервісу&#8230;</string>
     <string name="ln_url_login_ok"><![CDATA[Успiшно здiйснено логін на <i>%1$s</i>]]></string>
     <string name="ln_url_info_login"><![CDATA[Логiн-ключ для <i>%1$s</i> згенерований вашим гаманцем:<br><br><strong>%2$s</strong><br><br>Його буде використано для анонiмної авторизації на <i>%1$s</i> без розкриття ваших особистих даних.]]></string>
@@ -346,5 +346,6 @@
     <!-- pay market -->
     <string name="pay_market_search_hint">Пошук платіжних посилань</string>
     <string name="pay_market_last_payment"><![CDATA[Минулий платіж <strong>%2$s</strong>, %1$s]]></string>
+    <string name="pay_market_sending"><![CDATA[Відправлення <strong>%1$s</strong><br>Отримувач <strong>%2$s</strong>]]></string>
     <string name="pay_market_remove_link"><![CDATA[<br>Хочете видалити платіжне посилання?]]></string>
 </resources>

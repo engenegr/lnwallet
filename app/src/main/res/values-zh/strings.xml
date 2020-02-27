@@ -310,7 +310,7 @@
     <string name="ln_ops_start_fund_hosted_channel">主机通道</string>
 
     <string name="ln_url_resolving">连接服务&#8230;</string>
-    <string name="ln_url_payment_sending">传送中 %1$s</string>
+
     <string name="ln_url_login_ok"><![CDATA[在成功登录 <i>%1$s</i>]]></string>
     <string name="ln_url_info_login"><![CDATA[您的钱包为生成的登录密钥 <i>%1$s</i>:<br><br><strong>%2$s</strong><br><br>它将用于匿名授权，网址为 <i>%1$s</i>, 不会披露任何个人数据。]]></string>
     <string name="ln_url_pay_decrypt_fail">无法解密消息，请与供应商联系以解决此问题。</string>
@@ -335,5 +335,6 @@
     <!-- pay market -->
     <string name="pay_market_search_hint">付款链接搜索</string>
     <string name="pay_market_last_payment"><![CDATA[最后一次付款 <strong>%2$s</strong>, %1$s]]></string>
+    <string name="pay_market_sending"><![CDATA[发送 <strong>%1$s</strong><br>通过 <strong>%2$s</strong>]]></string>
     <string name="pay_market_remove_link"><![CDATA[<br>您要删除此付款链接吗？]]></string>
 </resources>

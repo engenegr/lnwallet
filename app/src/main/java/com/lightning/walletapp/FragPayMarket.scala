@@ -1,5 +1,7 @@
 package com.lightning.walletapp
 
+import java.io.InterruptedIOException
+
 import android.database.{ContentObserver, Cursor}
 import com.lightning.walletapp.FragPayMarket._
 import android.view.{LayoutInflater, View, ViewGroup}
@@ -13,12 +15,15 @@ import android.os.{Bundle, Handler}
 import android.support.v4.app.LoaderManager.LoaderCallbacks
 import android.support.v4.content.Loader
 import android.transition.TransitionManager.beginDelayedTransition
-import com.lightning.walletapp.helper.{ReactLoader, RichCursor}
+import com.lightning.walletapp.LNUrl.LNUrlAndData
+import com.lightning.walletapp.helper.{ReactLoader, RichCursor, ThrottledWork}
 import com.lightning.walletapp.ln.LNParams._
 import com.lightning.walletapp.ln.Tools._
 import com.lightning.walletapp.lnutils.ImplicitConversions._
 import com.lightning.walletapp.lnutils.IconGetter._
-import com.lightning.walletapp.lnutils.{PayMarketTable, PayMarketWrap}
+import com.lightning.walletapp.lnutils.JsonHttpUtils._
+import com.lightning.walletapp.lnutils.{LocalBackup, PayMarketTable, PayMarketWrap}
+import rx.lang.scala.{Subscription, Observable => Obs}
 
 
 object FragPayMarket {
@@ -38,7 +43,6 @@ class FragPayMarketWorker(val host: WalletActivity, frag: View) extends HumanTim
   val removeLink = app getString pay_market_remove_link
   val lastPaid = app getString pay_market_last_payment
   var allPayLinks = Vector.empty[PayLinkInfo]
-  var currentLNUrl = new String
 
   val adapter = new BaseAdapter {
     def getCount = allPayLinks.size
@@ -49,6 +53,20 @@ class FragPayMarketWorker(val host: WalletActivity, frag: View) extends HumanTim
       val holder = if (null == card.getTag) ViewHolder(card) else card.getTag.asInstanceOf[ViewHolder]
       holder fillView getItem(position)
       card
+    }
+  }
+
+  val worker = new ThrottledWork[LNUrl, LNUrlAndData] {
+    def work(lnUrl: LNUrl) = lnUrl.lnUrlAndDataObs
+
+    def error(fetchFail: Throwable) = {
+      host onFail fetchFail
+      updPayLinksList.run
+    }
+
+    def process(lnUrl: LNUrl, data: LNUrlAndData) = {
+      UITask(host resolveLNUrl data).run
+      updPayLinksList.run
     }
   }
 
@@ -74,19 +92,14 @@ class FragPayMarketWorker(val host: WalletActivity, frag: View) extends HumanTim
     view setTag this
 
     def fillView(info: PayLinkInfo): Unit = {
-      val backgroundColor = if (currentLNUrl == info.lnurl.request) Denomination.yellowHighlight else 0x00000000
+      val thisLinkSelectedCurrently = worker.subscriptionAndData.exists(_.data == info.lnurl)
+      val backgroundColor = if (thisLinkSelectedCurrently) Denomination.yellowHighlight else 0x00000000
       val lastInfo = lastPaid.format(me time new java.util.Date(info.lastDate), denom parsedWithSign info.lastMsat)
 
       view setOnClickListener onButtonTap {
-        if (currentLNUrl == new String) {
-          setCurrentUrlRefresh(info.lnurl.request)
-          host.fetch1stLevelUrl(decodedLNUrlData => {
-            host.resolveLNUrl(info.lnurl)(decodedLNUrlData)
-            setCurrentUrlRefresh(new String)
-          }, fetchError => {
-            host.onFail(fetchError)
-            setCurrentUrlRefresh(new String)
-          }, info.lnurl)
+        if (!thisLinkSelectedCurrently) {
+          worker.replaceWork(info.lnurl)
+          updPayLinksList.run
         }
       }
 
@@ -110,7 +123,6 @@ class FragPayMarketWorker(val host: WalletActivity, frag: View) extends HumanTim
     adapter.notifyDataSetChanged
   }
 
-  def setCurrentUrlRefresh(newValue: String) = runAnd(currentLNUrl = newValue)(updPayLinksList.run)
   def reload = android.support.v4.app.LoaderManager.getInstance(host).restartLoader(2, null, loaderCallbacks).forceLoad
   val observer = new ContentObserver(new Handler) { override def onChange(askedFromSelf: Boolean) = if (!askedFromSelf) reload }
   paySearch setOnQueryChangeListener new OnQueryChangeListener { def onSearchTextChanged(q0: String, q1: String) = reload }

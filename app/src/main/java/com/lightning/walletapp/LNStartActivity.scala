@@ -11,9 +11,10 @@ import com.lightning.walletapp.R.string._
 import com.lightning.walletapp.ln.Tools._
 import com.lightning.walletapp.PayRequest._
 import com.github.kevinsawicki.http.HttpRequest._
+import com.lightning.walletapp.lnutils.JsonHttpUtils._
 import com.lightning.walletapp.lnutils.ImplicitConversions._
-import com.lightning.walletapp.lnutils.olympus.OlympusWrap._
 import com.lightning.walletapp.lnutils.ImplicitJsonFormats._
+import com.lightning.walletapp.lnutils.olympus.OlympusWrap._
 
 import fr.acinq.bitcoin.{Bech32, Crypto, MilliSatoshi}
 import com.lightning.walletapp.ln.RoutingInfoTag.PaymentRouteVec
@@ -152,6 +153,9 @@ case class RemoteNodeView(acn: AnnounceChansNum) extends StartNodeView {
 // LNURL response types
 
 object LNUrl {
+  type LNUrlAndData = (LNUrl, LNUrlData)
+  type LNUrlAndWithdraw = (LNUrl, WithdrawRequest)
+
   def fromBech32(bech32url: String) = {
     val _ \ data = Bech32.decode(bech32url)
     val request = Bech32.five2eight(data)
@@ -176,24 +180,19 @@ object LNUrl {
 }
 
 case class LNUrl(request: String) {
+  val uri = LNUrl.checkHost(request)
   lazy val k1 = Try(uri getQueryParameter "k1")
   lazy val isAuth = Try(uri getQueryParameter "tag" equals "login").getOrElse(false)
   lazy val isWithdraw = Try(uri getQueryParameter "tag" equals "withdrawRequest").getOrElse(false)
-  val uri = LNUrl.checkHost(request)
-}
 
-trait LNUrlData {
-  def checkAgainstParent(lnUrl: LNUrl): Boolean = true
-  def unsafe(req: String) = get(req, false).header("Connection", "close")
-
-  def validate(lnUrl: LNUrl) = checkAgainstParent(lnUrl) match {
-    case false => throw new Exception("Callback domain mismatch")
-    case true => this
+  def lnUrlAndDataObs = queue map { _ =>
+    val level1 = get(uri.toString, false).header("Connection", "close")
+    val lnUrlData = to[LNUrlData](LNUrl guardResponse level1.connectTimeout(15000).body)
+    require(lnUrlData.checkAgainstParent(this), "2nd level callback domain mismatch")
+    this -> lnUrlData
   }
-}
 
-object WithdrawRequest {
-  def fromURI(uri: android.net.Uri) =
+  def constructWithdrawFromURIParameters =
     WithdrawRequest(callback = uri getQueryParameter "callback",
       minWithdrawable = Some(uri.getQueryParameter("minWithdrawable").toLong),
       maxWithdrawable = uri.getQueryParameter("maxWithdrawable").toLong,
@@ -201,8 +200,13 @@ object WithdrawRequest {
       k1 = uri getQueryParameter "k1")
 }
 
+trait LNUrlData {
+  def checkAgainstParent(lnUrl: LNUrl): Boolean = true
+  def level2(req: String) = get(req, false).header("Connection", "close")
+}
+
 case class WithdrawRequest(callback: String, k1: String, maxWithdrawable: Long, defaultDescription: String, minWithdrawable: Option[Long] = None) extends LNUrlData {
-  def requestWithdraw(lnUrl: LNUrl, pr: PaymentRequest) = unsafe(callbackUri.buildUpon.appendQueryParameter("pr", PaymentRequest write pr).appendQueryParameter("k1", k1).build.toString)
+  def requestWithdraw(lnUrl: LNUrl, pr: PaymentRequest) = level2(callbackUri.buildUpon.appendQueryParameter("pr", PaymentRequest write pr).appendQueryParameter("k1", k1).build.toString)
   override def checkAgainstParent(lnUrl: LNUrl) = lnUrl.uri.getHost == callbackUri.getHost
 
   val callbackUri = LNUrl.checkHost(callback)
@@ -220,7 +224,7 @@ case class IncomingChannelRequest(uri: String, callback: String, k1: String) ext
   val callbackUri = LNUrl.checkHost(callback)
 
   def requestChannel =
-    unsafe(callbackUri.buildUpon.appendQueryParameter("private", "1").appendQueryParameter("k1", k1)
+    level2(callbackUri.buildUpon.appendQueryParameter("private", "1").appendQueryParameter("k1", k1)
       .appendQueryParameter("remoteid", LNParams.keys.extendedNodeKey.publicKey.toString).build.toString)
 }
 
@@ -266,7 +270,7 @@ case class PayRequest(callback: String, maxSendable: Long, minSendable: Long, me
   def metaDataHash: ByteVector = Crypto.sha256(ByteVector view metadata.getBytes)
 
   def requestFinal(amount: MilliSatoshi, fromnodes: String = new String) =
-    unsafe(callbackUri.buildUpon.appendQueryParameter("amount", amount.toLong.toString)
+    level2(callbackUri.buildUpon.appendQueryParameter("amount", amount.toLong.toString)
       .appendQueryParameter("fromnodes", fromnodes).build.toString)
 }
 

@@ -55,7 +55,7 @@ class ThrottledWorkSpec {
     }
 
     replaceWorker2.replaceWork(new Runnable {
-      override def run(): Unit = assert(replaceWorker2.hasFinishedOrNeverStarted)
+      override def run(): Unit = assert(replaceWorker2.subscriptionAndData.isEmpty)
     })
   }
 }

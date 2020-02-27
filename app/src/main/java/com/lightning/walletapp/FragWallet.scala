@@ -638,8 +638,9 @@ class FragWalletWorker(val host: WalletActivity, frag: View) extends SearchBar w
       }
 
       def onUserAcceptSend(ms: MilliSatoshi) = {
-        val sending = app.getString(ln_url_payment_sending)
-        host toast sending.format(denom parsedWithSign ms)
+        val sending = app.getString(pay_market_sending)
+        val done = sending.format(denom parsedWithSign ms, lnUrl.uri.getHost)
+        host toast done.html
 
         def convert(raw: String) = {
           val prf = to[PayRequestFinal](raw)
@@ -656,7 +657,11 @@ class FragWalletWorker(val host: WalletActivity, frag: View) extends SearchBar w
           val pd = PaymentDescription(prf.successAction, Some(lnUrl.request), payReq.metaDataTextPlain)
           val rd1 = rd.copy(description = pd, airLeft = ChannelManager.all count isOperational)
           if (!prf.isThrowAway) PayMarketWrap.saveLink(lnUrl, payReq, ms)
-          UITask(me doSendOffChain rd1).run
+
+          UITask {
+            me doSendOffChain rd1
+            FragPayMarket.worker.reload
+          }.run
         }
 
         queue.map(_ => payReq.requestFinal(ms).body)
