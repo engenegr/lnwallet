@@ -320,11 +320,14 @@
     <string name="ln_ops_start_fund_incoming_channel">входящий канал</string>
     <string name="ln_ops_start_fund_hosted_channel">HOSTED-КАНАЛ</string>
 
-    <string name="ln_url_resolving">Подключение к сервису&#8230;</string>
-    <string name="ln_url_login_ok"><![CDATA[Успешный логин на <i>%1$s</i>]]></string>
+    <string name="ln_url_login_ok"><![CDATA[Успешный логин]]></string>
+    <string name="ln_url_linking_ok"><![CDATA[Ключ успешно связан]]></string>
+    <string name="ln_url_registration_ok"><![CDATA[Успешная регистрация]]></string>
+    <string name="ln_url_authorization_ok"><![CDATA[Успешная авторизация]]></string>
     <string name="ln_url_info_login"><![CDATA[Логин-ключ для <i>%1$s</i> сгенерированный вашим кошельком:<br><br><strong>%2$s</strong><br><br>Он будет использован для анонимной авторизации на <i>%1$s</i> без раскрытия ваших личных данных.]]></string>
     <string name="ln_url_pay_decrypt_fail">Не удалось расшифровать сообщение, пожалуйста, свяжитесь с продавцом для решения проблемы.</string>
-    <string name="ln_url_pay_message_title"><![CDATA[<strong>%1$s</strong><br><br>сообщение от продавца]]></string>
+    <string name="ln_url_pay_message_title">сообщение от продавца</string>
+    <string name="ln_url_resolving">Подключение к сервису&#8230;</string>
 
     <!-- Olympus log messages and notification -->
     <string name="olympus_log_channel_backup">Сохранен зашифрованный бекап для канала с «%1$s»</string>

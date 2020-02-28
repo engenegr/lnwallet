@@ -1,5 +1,6 @@
 package com.lightning.walletapp
 
+import spray.json._
 import android.view._
 import com.lightning.walletapp.ln._
 import android.text.format.DateUtils._
@@ -343,13 +344,21 @@ class WalletActivity extends NfcReaderActivity with ScanActivity { me =>
 
     def doAuth(alert: AlertDialog) = rm(alert) {
       val secondLevelRequestUri = lnUrl.uri.buildUpon.appendQueryParameter("sig", Tools.sign(dataToSign, linkingPrivKey).toHex).appendQueryParameter("key", linkingPubKey)
-      queue.map(_ => get(secondLevelRequestUri.build.toString, false).connectTimeout(15000).body).map(LNUrl.guardResponse).foreach(_ => onAuthSuccess.run, onFail)
+      queue.map(_ => get(secondLevelRequestUri.build.toString, false).connectTimeout(15000).body).map(LNUrl.guardResponse).foreach(raw => onAuthSuccess(raw).run, onFail)
       app quickToast ln_url_resolving
     }
 
-    def onAuthSuccess = UITask {
-      val message = getString(ln_url_login_ok).format(lnUrl.uri.getHost).html
-      mkCheckForm(alert => rm(alert)(finish), none, baseTextBuilder(message), dialog_close, -1)
+    def onAuthSuccess(raw: String) = UITask {
+      val msg = raw.parseJson.asJsObject.fields get "event" collect {
+        case JsString("REGISTERED") => ln_url_registration_ok
+        case JsString("AUTHED") => ln_url_authorization_ok
+        case JsString("LOGGEDIN") => ln_url_login_ok
+        case JsString("LINKED") => ln_url_linking_ok
+      }
+
+      val finalMessage = getString(msg getOrElse ln_url_authorization_ok)
+      val bld = baseBuilder(title = lnUrl.uri.getHost, body = finalMessage)
+      mkCheckForm(alert => rm(alert)(none), finish, bld, dialog_ok, dialog_close)
     }
 
     if (32 == dataToSign.length) {

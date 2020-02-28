@@ -309,12 +309,14 @@
     <string name="ln_ops_start_fund_incoming_channel">传入频道</string>
     <string name="ln_ops_start_fund_hosted_channel">主机通道</string>
 
-    <string name="ln_url_resolving">连接服务&#8230;</string>
-
-    <string name="ln_url_login_ok"><![CDATA[在成功登录 <i>%1$s</i>]]></string>
+    <string name="ln_url_login_ok"><![CDATA[成功登录]]></string>
+    <string name="ln_url_linking_ok"><![CDATA[成功关联]]></string>
+    <string name="ln_url_registration_ok"><![CDATA[成功注册]]></string>
+    <string name="ln_url_authorization_ok"><![CDATA[成功授权]]></string>
     <string name="ln_url_info_login"><![CDATA[您的钱包为生成的登录密钥 <i>%1$s</i>:<br><br><strong>%2$s</strong><br><br>它将用于匿名授权，网址为 <i>%1$s</i>, 不会披露任何个人数据。]]></string>
     <string name="ln_url_pay_decrypt_fail">无法解密消息，请与供应商联系以解决此问题。</string>
     <string name="ln_url_pay_message_title">来自供应商的消息</string>
+    <string name="ln_url_resolving">连接服务&#8230;</string>
 
     <!-- Olympus log messages and notification -->
     <string name="olympus_log_channel_backup">为频道保存了加密的备份 «%1$s»</string>
