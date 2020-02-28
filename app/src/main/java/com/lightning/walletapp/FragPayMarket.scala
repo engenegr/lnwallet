@@ -55,18 +55,10 @@ class FragPayMarketWorker(val host: WalletActivity, frag: View) extends HumanTim
     }
   }
 
-  val worker = new ThrottledWork[LNUrl, LNUrlAndData] {
+  val work = new ThrottledWork[LNUrl, LNUrlAndData] {
+    def process(lnUrl: LNUrl, data: LNUrlAndData) = runAnd(UITask(host resolveLNUrl data).run)(updPayLinksList.run)
+    def error(fetchFail: Throwable) = runAnd(host onFail fetchFail)(updPayLinksList.run)
     def work(lnUrl: LNUrl) = lnUrl.lnUrlAndDataObs
-
-    def error(fetchFail: Throwable) = {
-      host onFail fetchFail
-      updPayLinksList.run
-    }
-
-    def process(lnUrl: LNUrl, data: LNUrlAndData) = {
-      UITask(host resolveLNUrl data).run
-      updPayLinksList.run
-    }
   }
 
   val loaderCallbacks = new LoaderCallbacks[Cursor] {
@@ -91,7 +83,7 @@ class FragPayMarketWorker(val host: WalletActivity, frag: View) extends HumanTim
     view setTag this
 
     def fillView(info: PayLinkInfo): Unit = {
-      val thisLinkSelectedCurrently = worker.subscriptionAndData.exists(_.data == info.lnurl)
+      val thisLinkSelectedCurrently = work.subscriptionAndData.exists(_.data == info.lnurl)
       val backgroundColor = if (thisLinkSelectedCurrently) Denomination.yellowHighlight else 0x00000000
       val lastInfo = lastPaid.format(me time new java.util.Date(info.lastDate), denom parsedWithSign info.lastMsat)
 
@@ -101,7 +93,7 @@ class FragPayMarketWorker(val host: WalletActivity, frag: View) extends HumanTim
         val canProceed = !(inFlight || thisLinkSelectedCurrently)
 
         if (canProceed) {
-          worker.replaceWork(info.lnurl)
+          work.replaceWork(info.lnurl)
           updPayLinksList.run
         }
       }

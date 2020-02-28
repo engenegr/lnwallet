@@ -627,7 +627,7 @@ class FragWalletWorker(val host: WalletActivity, frag: View) extends SearchBar w
       }
     }
 
-  def lnurlPayOffChainSend(lnUrl: LNUrl, payReq: PayRequest) = {
+  def lnurlPayOffChainSend(lnUrl: LNUrl, payReq: PayRequest) =
     new OffChainSender(maxCanSend = math.min(ChannelManager.estimateAIRCanSend, payReq.maxSendable).millisatoshi, minCanSend = payReq.minSendable.millisatoshi) {
       def displayPaymentForm = mkCheckFormNeutral(sendAttempt, none, _ => viewHost, baseBuilder(getTitle, baseContent), dialog_ok, dialog_cancel, dialog_info)
       def viewHost = browse(s"${lnUrl.uri.getScheme}://${lnUrl.uri.getHost}")
@@ -656,9 +656,13 @@ class FragWalletWorker(val host: WalletActivity, frag: View) extends SearchBar w
           val pd = PaymentDescription(prf.successAction, payReq.metaDataTextPlain)
           val rd = app.emptyRD(prf.paymentRequest, firstMsat = ms.toLong, useCache = true)
           val rd1 = rd.copy(description = pd, airLeft = ChannelManager.all count isOperational)
-          if (!prf.isThrowAway) PayMarketWrap.saveLink(lnUrl, payReq, ms, rd.pr.paymentHash.toHex)
           UITask(me doSendOffChain rd1).run
-          PayMarketWrap.uiNotify
+
+          if (!prf.isThrowAway) {
+            // Vendor indicates this payment link can be reused later
+            PayMarketWrap.saveLink(lnUrl, payReq, ms, rd.pr.paymentHash.toHex)
+            PayMarketWrap.uiNotify
+          }
         }
 
         queue.map(_ => payReq.requestFinal(ms).body)
@@ -676,7 +680,6 @@ class FragWalletWorker(val host: WalletActivity, frag: View) extends SearchBar w
         displayPaymentForm
       }
     }
-  }
 
   def doSendOffChain(rd: RoutingData): Unit = {
     if (ChannelManager.currentBlocksLeft.isEmpty) host toast err_ln_chain_wait

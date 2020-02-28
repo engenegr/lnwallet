@@ -262,9 +262,9 @@ case class PayRequest(callback: String, maxSendable: Long, minSendable: Long, me
 
   val callbackUri = LNUrl.checkHost(callback)
   val minCanSend = minSendable max LNParams.minPaymentMsat
-  private val metaDataTexts = decodedMetadata.collect { case Vector("text/plain", data) => data }
+  private val metaDataTexts = decodedMetadata.collect { case Vector("text/plain", content) => content }
   require(metaDataTexts.size == 1, "There must be exactly one text/plain entry in metadata")
-  require(minCanSend <= maxSendable, s"$maxSendable is less than min $minCanSend")
+  require(minCanSend <= maxSendable, s"Max=$maxSendable while min=$minCanSend")
   val metaDataTextPlain = metaDataTexts.head
 
   override def checkAgainstParent(lnUrl: LNUrl) = lnUrl.uri.getHost == callbackUri.getHost
