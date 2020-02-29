@@ -1,8 +1,8 @@
 package com.lightning.walletapp.lnutils
 
 import spray.json._
+import android.os.Environment._
 import com.lightning.walletapp.ln._
-import scala.collection.JavaConverters._
 import com.lightning.walletapp.lnutils.ImplicitJsonFormats._
 import com.lightning.walletapp.lnutils.JsonHttpUtils.to
 import com.lightning.walletapp.ln.wire.LocalBackups
@@ -13,7 +13,6 @@ import com.lightning.walletapp.helper.AES
 import android.content.pm.PackageManager
 import com.google.common.io.Files
 import org.bitcoinj.wallet.Wallet
-import android.os.Environment
 import fr.acinq.bitcoin.Block
 import scodec.bits.ByteVector
 import scala.util.Try
@@ -26,8 +25,8 @@ object LocalBackup {
   final val LOCAL_BACKUP_REQUEST_NUMBER = 105
 
   def isExternalStorageWritable: Boolean = {
-    val isMounted = Environment.MEDIA_MOUNTED.equals(Environment.getExternalStorageState)
-    val isWritable = Environment.getExternalStorageDirectory.canWrite
+    val isMounted = MEDIA_MOUNTED.equals(getExternalStorageState)
+    val isWritable = getExternalStorageDirectory.canWrite
     isMounted && isWritable
   }
 
@@ -41,11 +40,9 @@ object LocalBackup {
     case _ => "unknown"
   }
 
-  def getBackupFileUnsafe(channelBackupDirName: String, suffix: String) = {
-    val publicDir = new File(Environment.getExternalStorageDirectory, BACKUP_DIR)
-    val chainDir = new File(publicDir, channelBackupDirName)
-    val fullName = s"$BACKUP_FILE_NAME-$suffix"
-    val backup = new File(chainDir, fullName)
+  def getBackupFileUnsafe(channelBackupDirName: String, mnemonicSuffix: String): File = {
+    val chainDir = new File(new File(getExternalStorageDirectory, BACKUP_DIR), channelBackupDirName)
+    val backup = new File(chainDir, s"$BACKUP_FILE_NAME-$mnemonicSuffix")
     if (!backup.isFile) chainDir.mkdirs
     backup
   }

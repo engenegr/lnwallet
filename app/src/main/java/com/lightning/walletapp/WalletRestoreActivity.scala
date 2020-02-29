@@ -8,8 +8,8 @@ import com.hootsuite.nachos.terminator.ChipTerminatorHandler._
 import com.lightning.walletapp.lnutils.{ChannelWrap, LocalBackup}
 import com.lightning.walletapp.ln.Tools.{none, runAnd, wrap}
 import org.bitcoinj.wallet.{DeterministicSeed, Wallet}
+import scala.util.{Failure, Success, Try}
 import android.view.{View, ViewGroup}
-import scala.util.{Failure, Success}
 
 import com.hootsuite.nachos.NachoTextView
 import com.lightning.walletapp.Utils.app
@@ -40,11 +40,6 @@ class WalletRestoreActivity extends TimerActivity with FirstActivity { me =>
   lazy val restoreInfo = findViewById(R.id.restoreInfo).asInstanceOf[View]
   lazy val dp = new WhenPicker(me, 1526817600 * 1000L)
 
-  lazy val backupFileUnsafe = {
-    val dir = LocalBackup.getBackupDirectory(LNParams.chainHash)
-    LocalBackup.getBackupFileUnsafe(dir, LNParams.keys.cloudId)
-  }
-
   def INIT(state: Bundle) = {
     setContentView(R.layout.activity_restore)
     restoreCode addTextChangedListener new TextChangedWatcher {
@@ -69,9 +64,8 @@ class WalletRestoreActivity extends TimerActivity with FirstActivity { me =>
   }
 
   override def onBackPressed: Unit = wrap(super.onBackPressed)(app.kit.stopAsync)
-  def setWhen(btn: View) = mkCheckForm(alert => rm(alert)(restoreWhen setText dp.humanTime), none, baseBuilder(null, dp.refresh), dialog_ok, dialog_cancel)
-  def canReadBackupFile: Boolean = LocalBackup.isAllowed(me) && LocalBackup.isExternalStorageWritable && backupFileUnsafe.isFile
   def getMnemonic: String = restoreCode.getText.toString.trim.toLowerCase.replaceAll("[^a-zA-Z0-9']+", " ")
+  def setWhen(btn: View) = mkCheckForm(alert => rm(alert)(restoreWhen setText dp.humanTime), none, baseBuilder(null, dp.refresh), dialog_ok, dialog_cancel)
 
   def recWallet(top: View) =
     app.kit = new app.WalletKit {
@@ -84,31 +78,37 @@ class WalletRestoreActivity extends TimerActivity with FirstActivity { me =>
         val seed = new DeterministicSeed(getMnemonic, null, "", dp.cal.getTimeInMillis / 1000)
         LNParams setup seed.getSeedBytes
 
-        def restoreUsingBackup =
-          LocalBackup.readAndDecrypt(backupFileUnsafe, LNParams.keys.cloudSecret) match {
+        Try {
+          val dir = LocalBackup.getBackupDirectory(LNParams.chainHash)
+          LocalBackup.getBackupFileUnsafe(dir, LNParams.keys.cloudId)
+        } match {
+          case Success(backupFile) =>
             // Backup file is present, decode it and restore chans if successful
+            LocalBackup.readAndDecrypt(backupFile, LNParams.keys.cloudSecret) match {
+              // Decoding may still fail, do not proceed and inform user in that case
 
-            case Success(localBackups) =>
-              // Update ealiest key creation time to our watch timestamp
-              seed.setCreationTimeSeconds(localBackups.earliestUtxoSeconds)
-              wallet = Wallet.fromSeed(app.params, seed)
+              case Success(localBackups) =>
+                // Update ealiest key creation time to our watch timestamp
+                seed.setCreationTimeSeconds(localBackups.earliestUtxoSeconds)
+                wallet = Wallet.fromSeed(app.params, seed)
 
-              // Restore channels before proceeding
-              localBackups.hosted.foreach(restoreHostedChannel)
-              localBackups.normal.foreach(restoreNormalChannel)
-              me prepareFreshWallet app.kit
+                // Restore channels before proceeding
+                localBackups.hosted.foreach(restoreHostedChannel)
+                localBackups.normal.foreach(restoreNormalChannel)
+                me prepareFreshWallet app.kit
 
-            case Failure(reason) => UITask {
-              val message = getString(ln_decrypt_fail).format(reason.getMessage)
-              showForm(negTextBuilder(dialog_ok, message).create)
-              restoreProgress setVisibility View.GONE
-              restoreInfo setVisibility View.VISIBLE
-            }.run
-          }
+              case Failure(reason) => UITask {
+                val message = getString(ln_decrypt_fail).format(reason.getMessage)
+                showForm(negTextBuilder(dialog_ok, msg = message).create)
+                restoreProgress setVisibility View.GONE
+                restoreInfo setVisibility View.VISIBLE
+              }.run
+            }
 
-        if (canReadBackupFile) restoreUsingBackup else {
-          wallet = Wallet.fromSeed(app.params, seed)
-          me prepareFreshWallet app.kit
+          case _ =>
+            // Not allowed by user or not present at all
+            wallet = Wallet.fromSeed(app.params, seed)
+            me prepareFreshWallet app.kit
         }
       }
     }
