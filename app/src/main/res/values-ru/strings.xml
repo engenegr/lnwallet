@@ -332,7 +332,6 @@
     <!-- Olympus log messages and notification -->
     <string name="olympus_log_channel_backup">Сохранен зашифрованный бекап для канала с «%1$s»</string>
     <string name="olympus_log_watch_payments">Начато наблюдение за %1$s старыми состояниями</string>
-    <string name="olympus_log_refunding_tx">Сохранена отложенная возвратная транзакция</string>
     <string name="notify_body">Приложение остается открытым, чтобы получить %1$s</string>
     <string name="notify_title">Ожидается платеж-молния</string>
 
@@ -347,7 +346,7 @@
 
     <!-- pay market -->
     <string name="pay_market_search_hint">Поиск платежных ссылок</string>
-    <string name="pay_market_last_payment"><![CDATA[Прошлый платеж <strong>%2$s</strong>, %1$s]]></string>
+    <string name="pay_market_last_payment"><![CDATA[Предыдущий <strong>%2$s</strong>, %1$s]]></string>
     <string name="pay_market_sending"><![CDATA[Oтправка <strong>%1$s</strong><br>Получатель <strong>%2$s</strong>]]></string>
     <string name="pay_market_remove_link"><![CDATA[<br>Хотите удалить платежную ссылку?]]></string>
 </resources>

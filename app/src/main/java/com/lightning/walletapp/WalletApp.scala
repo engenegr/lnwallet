@@ -23,12 +23,12 @@ import scodec.bits.{BitVector, ByteVector}
 import org.bitcoinj.wallet.{SendRequest, Wallet}
 import fr.acinq.bitcoin.Crypto.{Point, PublicKey}
 import android.content.{ClipboardManager, Context, Intent}
-import com.lightning.walletapp.lnutils.olympus.{OlympusWrap, TxUploadAct}
 import android.app.{Application, NotificationChannel, NotificationManager}
 import com.lightning.walletapp.lnutils.JsonHttpUtils.{ioQueue, pickInc, retry}
 import com.lightning.walletapp.helper.{AwaitService, RichCursor, ThrottledWork}
 import com.lightning.walletapp.ln.Channel.{CLOSING, SLEEPING, OPEN, REFUNDING, isOperational, isOpeningOrOperational}
 
+import com.lightning.walletapp.lnutils.olympus.OlympusWrap
 import org.bitcoinj.net.discovery.MultiplexingDiscovery
 import concurrent.ExecutionContext.Implicits.global
 import java.util.concurrent.TimeUnit.MILLISECONDS
@@ -411,11 +411,6 @@ object ChannelManager extends Broadcaster {
     }
 
     def CLOSEANDWATCH(cd: ClosingData) = {
-      cd.tier12States.collect { case dps: DelayedPublishStatus => dps.txn.bin }.toVector match {
-        case txs if txs.isEmpty => Tools log "Closing contains no second tier txs, nothing to schedule on Olympus"
-        case txs => olympusWrap tellClouds TxUploadAct(txvec.encode(txs).require.toByteVector, Nil, "txs/schedule")
-      }
-
       // Collect all the commit txs publicKeyScripts and watch them locally
       // because it's possible that remote peer will reveal preimages on-chain
       app.kit.wallet.addWatchedScripts(app.kit closingPubKeyScripts cd)

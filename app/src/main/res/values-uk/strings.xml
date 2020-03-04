@@ -332,7 +332,6 @@
     <!-- Olympus log messages and notification -->
     <string name="olympus_log_channel_backup">Збережений зашифрований бекап каналу з «%1$s»</string>
     <string name="olympus_log_watch_payments">Почато стеження за %1$s старими станами</string>
-    <string name="olympus_log_refunding_tx">Збережена відкладена зворотня транзакція</string>
     <string name="notify_body">Додаток залишається відкритим, щоб отримати %1$s</string>
     <string name="notify_title">Очікується платіж-Блискавка</string>
 
@@ -347,7 +346,7 @@
 
     <!-- pay market -->
     <string name="pay_market_search_hint">Пошук платіжних посилань</string>
-    <string name="pay_market_last_payment"><![CDATA[Минулий платіж <strong>%2$s</strong>, %1$s]]></string>
+    <string name="pay_market_last_payment"><![CDATA[Минулий <strong>%2$s</strong>, %1$s]]></string>
     <string name="pay_market_sending"><![CDATA[Відправлення <strong>%1$s</strong><br>Отримувач <strong>%2$s</strong>]]></string>
     <string name="pay_market_remove_link"><![CDATA[<br>Хочете видалити платіжне посилання?]]></string>
 </resources>

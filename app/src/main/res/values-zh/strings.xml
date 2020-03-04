@@ -321,7 +321,6 @@
     <!-- Olympus log messages and notification -->
     <string name="olympus_log_channel_backup">为频道保存了加密的备份 «%1$s»</string>
     <string name="olympus_log_watch_payments">开始观看 %1$s 个旧频道状态</string>
-    <string name="olympus_log_refunding_tx">安排延迟退款交易</string>
     <string name="notify_body">保持应用打开以接收 %1$s</string>
     <string name="notify_title">等待收款</string>
 
