@@ -82,7 +82,7 @@ class WalletRestoreActivity extends TimerActivity with FirstActivity { me =>
           val dir = LocalBackup.getBackupDirectory(LNParams.chainHash)
           LocalBackup.getBackupFileUnsafe(dir, LNParams.keys.cloudId)
         } match {
-          case Success(backupFile) =>
+          case Success(backupFile) if backupFile.isFile =>
             // Backup file is present, decode it and restore chans if successful
             LocalBackup.readAndDecrypt(backupFile, LNParams.keys.cloudSecret) match {
               // Decoding may still fail, do not proceed and inform user in that case
