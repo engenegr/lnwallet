@@ -72,6 +72,7 @@
                 <category android:name="android.intent.category.BROWSABLE"/>
                 <data android:scheme="lightning"/>
                 <data android:scheme="bitcoin"/>
+                <data android:scheme="blw"/>
             </intent-filter>
 
             <intent-filter>
