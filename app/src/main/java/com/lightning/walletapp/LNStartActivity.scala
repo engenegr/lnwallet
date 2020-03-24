@@ -183,7 +183,17 @@ case class LNUrl(request: String) {
   val uri = LNUrl.checkHost(request)
   lazy val k1 = Try(uri getQueryParameter "k1")
   lazy val isAuth = Try(uri getQueryParameter "tag" equals "login").getOrElse(false)
-  lazy val isWithdraw = Try(uri getQueryParameter "tag" equals "withdrawRequest").getOrElse(false)
+
+  lazy val withdrawAttempt = Try {
+    require(uri getQueryParameter "tag" equals "withdrawRequest")
+    val minWithdrawableOpt = Some(uri.getQueryParameter("minWithdrawable").toLong)
+
+    WithdrawRequest(minWithdrawable = minWithdrawableOpt,
+      maxWithdrawable = uri.getQueryParameter("maxWithdrawable").toLong,
+      defaultDescription = uri getQueryParameter "defaultDescription",
+      callback = uri getQueryParameter "callback",
+      k1 = uri getQueryParameter "k1")
+  }
 
   def lnUrlAndDataObs = queue map { _ =>
     val level1 = get(uri.toString, false).header("Connection", "close")
@@ -191,13 +201,6 @@ case class LNUrl(request: String) {
     require(lnUrlData.checkAgainstParent(this), "2nd level callback domain mismatch")
     this -> lnUrlData
   }
-
-  def constructWithdrawFromURIParameters =
-    WithdrawRequest(callback = uri getQueryParameter "callback",
-      minWithdrawable = Some(uri.getQueryParameter("minWithdrawable").toLong),
-      maxWithdrawable = uri.getQueryParameter("maxWithdrawable").toLong,
-      defaultDescription = uri getQueryParameter "defaultDescription",
-      k1 = uri getQueryParameter "k1")
 }
 
 trait LNUrlData {

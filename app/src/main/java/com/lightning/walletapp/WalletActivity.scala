@@ -275,7 +275,7 @@ class WalletActivity extends NfcReaderActivity with ScanActivity { me =>
 
       case lnUrl: LNUrl =>
         if (lnUrl.isAuth) showAuthForm(lnUrl)
-        else if (lnUrl.isWithdraw) me doReceivePayment Some(lnUrl -> lnUrl.constructWithdrawFromURIParameters)
+        else if (lnUrl.withdrawAttempt.isSuccess) me doReceivePayment Some(lnUrl -> lnUrl.withdrawAttempt.get)
         else lnUrl.lnUrlAndDataObs.doOnSubscribe(app quickToast ln_url_resolving).foreach(data => UITask(me resolveLNUrl data).run, onFail)
 
       case pr: PaymentRequest =>
