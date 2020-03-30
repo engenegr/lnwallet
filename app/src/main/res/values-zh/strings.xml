@@ -141,7 +141,7 @@
     <string name="btc_outgoing_title"><![CDATA[<font color=#FF9900><strong>比特币转账</strong></font><br>%1$s<br><br>付款 %2$s<br><small>以目前汇率计 %3$s</small><br>手续费 %4$s = %5$.2f%%]]></string>
     <string name="btc_pending_title"><![CDATA[<font color=#FF9900><strong>比特币转账</strong></font><br><small>通道退款预计时间</small><br>%1$s<br><br>等待处理 %2$s<br><small>以目前汇率计 %3$s</small><br>手续费 %4$s = %5$.2f%%]]></string>
 
-    <string name="txs_view_outside">在 SmartBit 网站上查看</string>
+    <string name="txs_view_outside">在 Mempool.Space 网站上查看</string>
     <string name="txs_p2wsh">合约资金</string>
 
     <array name="txs_confs">

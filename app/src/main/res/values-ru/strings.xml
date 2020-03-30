@@ -143,7 +143,7 @@
     <string name="btc_outgoing_title"><![CDATA[<font color=#E68A00><strong>Биткоин-транзакция</strong></font><br>%1$s<br><br>исходящий %2$s<br><small>%3$s по текущему курсу</small><br>комса %4$s = %5$.2f%%]]></string>
     <string name="btc_pending_title"><![CDATA[<font color=#FF9900><strong>Биткоин-транзакция</strong></font><br><small>Возврат денег из канала</small><br>%1$s<br><br>сумма %2$s<br><small>%3$s по текущему курсу</small><br>комса %4$s = %5$.2f%%]]></string>
 
-    <string name="txs_view_outside">Посмотреть на SmartBit</string>
+    <string name="txs_view_outside">Посмотреть на Mempool.Space</string>
     <string name="txs_p2wsh">Наполнение контракта</string>
 
     <array name="txs_confs">

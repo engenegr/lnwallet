@@ -240,7 +240,7 @@ class LNOpsActivity extends TimerActivity with HumanTimeDisplay { me =>
           rm(alert) {
             val noHtlcBlock = chan.inFlightHtlcs.isEmpty
             val canCoopClose = isOpeningOrOperational(chan)
-            if (0 == pos) host.browse(s"https://smartbit.com.au/tx/${chan.fundTxId.toHex}")
+            if (0 == pos) host.browse(s"https://mempool.space/tx/${chan.fundTxId.toHex}")
             else if (1 == pos && canCoopClose && noHtlcBlock) warnAndMaybeClose(me getString ln_chan_close_confirm_wallet)
             else if (1 == pos && canCoopClose) warnAndMaybeClose(me getString ln_chan_close_inflight_details)
             else if (1 == pos) warnAndMaybeClose(channelClosureWarning = me getString ln_chan_force_details)

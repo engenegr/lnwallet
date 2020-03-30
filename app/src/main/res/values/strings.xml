@@ -142,7 +142,7 @@
     <string name="btc_outgoing_title"><![CDATA[<font color=#FF9900><strong>Bitcoin transaction</strong></font><br>%1$s<br><br>sent %2$s<br><small>%3$s at current rates</small><br>fee %4$s = %5$.2f%%]]></string>
     <string name="btc_pending_title"><![CDATA[<font color=#FF9900><strong>Bitcoin transaction</strong></font><br><small>delayed channel refunding</small><br>%1$s<br><br>pending %2$s<br><small>%3$s at current rates</small><br>fee %4$s = %5$.2f%%]]></string>
 
-    <string name="txs_view_outside">View on SmartBit site</string>
+    <string name="txs_view_outside">View on Mempool.Space</string>
     <string name="txs_p2wsh">Contract funding</string>
 
     <array name="txs_confs">

@@ -345,7 +345,7 @@ class FragWalletWorker(val host: WalletActivity, frag: View) extends SearchBar w
     def generatePopup = {
       val detailsWrapper = host.getLayoutInflater.inflate(R.layout.frag_tx_btc_details, null)
       val useExplorerButton = detailsWrapper.findViewById(R.id.viewTxOutside).asInstanceOf[Button]
-      useExplorerButton setOnClickListener onButtonTap(host browse s"https://smartbit.com.au/tx/$txid")
+      useExplorerButton setOnClickListener onButtonTap(host browse s"https://mempool.space/tx/$txid")
 
       val inFiat = msatInFiatHuman(stat.amount)
       val base = app.getString(btc_pending_title)
@@ -491,7 +491,7 @@ class FragWalletWorker(val host: WalletActivity, frag: View) extends SearchBar w
       }
 
       val useExplorerButton = detailsWrapper.findViewById(R.id.viewTxOutside).asInstanceOf[Button]
-      useExplorerButton setOnClickListener onButtonTap(host browse s"https://smartbit.com.au/tx/$txid")
+      useExplorerButton setOnClickListener onButtonTap(host browse s"https://mempool.space/tx/$txid")
       val views = new ArrayAdapter(host, R.layout.frag_top_tip, R.id.titleTip, humanValues.map(_.html).toArray)
       val lst = host.getLayoutInflater.inflate(R.layout.frag_center_list, null).asInstanceOf[ListView]
       lst setHeaderDividersEnabled false
