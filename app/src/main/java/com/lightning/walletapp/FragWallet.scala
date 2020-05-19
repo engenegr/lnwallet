@@ -705,14 +705,13 @@ class FragWalletWorker(val host: WalletActivity, frag: View) extends SearchBar w
     require(amountPossibleRebalance > 0, "No channel is able to send funds into accumulator")
 
     val Some(_ \ extraHop) = channelAndHop(toChan)
-    val rbRD = PaymentInfoWrap.recordRoutingDataWithPr(extraRoutes = Vector(extraHop),
-      amount = math.min(deltaAmountToSend, amountPossibleRebalance).millisatoshi,
-      preimage = ByteVector(random getBytes 32), REBALANCING)
+    val finalAmount = math.min(deltaAmountToSend, amountPossibleRebalance).millisatoshi
+    val rbRD = PaymentInfoWrap.recordRoutingDataWithPr(Vector(extraHop), finalAmount, ByteVector(random getBytes 32), REBALANCING).copy(isRebalancing = true)
 
     val listener = new ChannelListener {
       override def outPaymentAccepted(rd: RoutingData) =
-      // User may send a different payment while AIR is active, halt AIR if that happens
-      // also this is desired happen when AIR fails and then user sends a different payment
+        // User may send a different payment while AIR is active, halt AIR if that happens
+        // also this is desired happen when AIR fails and then user sends a different payment
         if (rd.pr.paymentHash != rbRD.pr.paymentHash) ChannelManager detachListener this
 
       override def onSettled(cs: Commitments) = {

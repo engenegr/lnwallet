@@ -170,12 +170,11 @@ case class RoutingData(pr: PaymentRequest, routes: PaymentRouteVec, usedRoute: P
                        onion: PacketAndSecrets, firstMsat: Long /* amount without off-chain fee */ ,
                        lastMsat: Long /* amount with off-chain fee added */ , lastExpiry: Long, callsLeft: Int,
                        useCache: Boolean, airLeft: Int, capFeeByOnChain: Boolean, expensiveScids: Vector[Long],
-                       description: PaymentDescription, fromHostedOnly: Boolean) {
+                       description: PaymentDescription, fromHostedOnly: Boolean, isRebalancing: Boolean) {
 
   // Empty used route means we're sending to peer and its nodeId should be our targetId
   def nextNodeId(route: PaymentRoute) = route.headOption.map(_.nodeId) getOrElse pr.nodeId
   lazy val queryText = s"${description.text} ${pr.nodeId.toString} ${pr.paymentHash.toHex}"
-  lazy val isReflexive = pr.nodeId == LNParams.keys.extendedNodeKey.publicKey
 }
 
 case class PaymentInfo(rawPr: String, hash: String, preimage: String,

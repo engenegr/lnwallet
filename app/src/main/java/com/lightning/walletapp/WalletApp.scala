@@ -101,9 +101,9 @@ class WalletApp extends Application { me =>
 
   def emptyRD(pr: PaymentRequest, firstMsat: Long, useCache: Boolean) = {
     val useOnChainFeeCap = prefs.getBoolean(AbstractKit.CAP_LN_FEES, false)
-    RoutingData(pr, routes = Vector.empty, usedRoute = Vector.empty, PacketAndSecrets(emptyOnionPacket, Vector.empty), firstMsat = firstMsat, lastMsat = 0L,
-      lastExpiry = 0L, callsLeft = if (useOnChainFeeCap) 8 else 4, useCache = useCache, airLeft = 0, capFeeByOnChain = useOnChainFeeCap,
-      expensiveScids = Vector.empty, description = PaymentDescription(None, pr.description), fromHostedOnly = false)
+    RoutingData(pr, routes = Vector.empty, usedRoute = Vector.empty, PacketAndSecrets(emptyOnionPacket, Vector.empty), firstMsat = firstMsat,
+      lastMsat = 0L, lastExpiry = 0L, callsLeft = if (useOnChainFeeCap) 8 else 4, useCache = useCache, airLeft = 0, capFeeByOnChain = useOnChainFeeCap,
+      expensiveScids = Vector.empty, description = PaymentDescription(None, pr.description), fromHostedOnly = false, isRebalancing = false)
   }
 
   object TransData {
@@ -460,7 +460,7 @@ object ChannelManager extends Broadcaster {
     } yield Obs just partialRoutes.map(_ ++ tag.route)
 
     def getRoutes(target: PublicKey) =
-      if (rd.isReflexive) from diff Vector(target) match {
+      if (rd.isRebalancing) from diff Vector(target) match {
         case restFrom if restFrom.isEmpty => Obs just Vector(Vector.empty)
         case restFrom if rd.useCache => RouteWrap.findRoutes(restFrom, target, rd)
         case restFrom => BadEntityWrap.findRoutes(restFrom, target, rd)
@@ -472,7 +472,7 @@ object ChannelManager extends Broadcaster {
 
     val paymentRoutesObs =
       if (from.isEmpty) Obs error new LightningException("No sources")
-      else if (rd.isReflexive) Obs.zip(withHints).map(_.flatten.toVector)
+      else if (rd.isRebalancing) Obs.zip(withHints).map(_.flatten.toVector)
       else Obs.zip(getRoutes(rd.pr.nodeId) +: withHints).map(_.flatten.toVector)
 
     for {
