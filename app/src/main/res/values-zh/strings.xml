@@ -321,7 +321,6 @@
     <!-- Olympus log messages and notification -->
     <string name="olympus_log_channel_backup">已为通道保存加密备份 «%1$s»</string>
     <string name="olympus_log_watch_payments">开始监控 %1$s 个旧通道状态</string>
-    <string name="olympus_log_refunding_tx">已安排一个被延迟的退款交易</string>
     <string name="notify_body">保持应用开启以接收 %1$s</string>
     <string name="notify_title">等待交易</string>
 
