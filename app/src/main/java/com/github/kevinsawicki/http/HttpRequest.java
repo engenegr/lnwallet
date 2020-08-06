@@ -89,7 +89,6 @@ import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 import javax.net.ssl.SSLSessionContext;
 
-
 /**
  * A fluid interface for making HTTP requests using an underlying
  * {@link HttpURLConnection} (or sub-class).
@@ -268,7 +267,7 @@ public class HttpRequest {
     else
       return CHARSET_UTF8;
   }
-  
+
   private static SSLSocketFactory getTrustedFactory()
       throws HttpRequestException {
     if (TRUSTED_FACTORY == null) {
