@@ -28,6 +28,10 @@ case class PaymentHashTag(hash: ByteVector) extends Tag {
   def toInt5s = encode(Bech32 eight2five hash.toArray, 'p')
 }
 
+case class PaymentSecretTag(secret: ByteVector) extends Tag {
+  def toInt5s = encode(Bech32 eight2five secret.toArray, 's')
+}
+
 case class DescriptionTag(description: String) extends Tag {
   def toInt5s = encode(Bech32 eight2five description.getBytes, 'd')
 }
@@ -113,6 +117,7 @@ case class PaymentRequest(prefix: String, amount: Option[MilliSatoshi], timestam
   lazy val msatOrMin = amount getOrElse MilliSatoshi(LNParams.minPaymentMsat)
   lazy val adjustedMinFinalCltvExpiry = tags.collectFirst { case MinFinalCltvExpiryTag(delta) => delta }.getOrElse(0L) + 18L
   lazy val paymentHash = tags.collectFirst { case PaymentHashTag(hash) => hash }.get
+  lazy val paymentSecret = tags.collectFirst { case PaymentSecretTag(secret) => secret }.get
   lazy val features = tags.collectFirst { case fts: FeaturesTag => fts.bitmask }
   lazy val routingInfo = tags.collect { case r: RoutingInfoTag => r }
 
@@ -161,11 +166,11 @@ object PaymentRequest {
   val expiryTag = ExpiryTag(seconds = 3600 * 24 + 1)
   val cltvExpiryTag = MinFinalCltvExpiryTag(LNParams.blocksPerDay * 2 - 3) // Minus 3 to account for trampoline senders
   val prefixes = Map(Block.RegtestGenesisBlock.hash -> "lnbcrt", Block.TestnetGenesisBlock.hash -> "lntb", Block.LivenetGenesisBlock.hash -> "lnbc")
-
+  val paymentSecretTag = PaymentSecretTag(ByteVector.empty)
   def apply(chain: ByteVector, amount: Option[MilliSatoshi], paymentHash: ByteVector,
             privKey: PrivateKey, description: String, routes: PaymentRouteVec): PaymentRequest = {
 
-    val tags = Vector(DescriptionTag(description), cltvExpiryTag, PaymentHashTag(paymentHash), expiryTag) ++ routes.map(RoutingInfoTag.apply)
+    val tags = Vector(DescriptionTag(description), cltvExpiryTag, PaymentHashTag(paymentHash), paymentSecretTag, expiryTag) ++ routes.map(RoutingInfoTag.apply)
     PaymentRequest(prefixes(chain), amount, System.currentTimeMillis / 1000L, privKey.publicKey, tags, ByteVector.empty) sign privKey
   }
 
@@ -238,6 +243,10 @@ object PaymentRequest {
         case tagD if tagD == 13 =>
           val description = Bech32 five2eight input.slice(3, len + 3)
           DescriptionTag(Tools bin2readable description)
+
+        case tagS if tagS == 16 =>
+          val secret = Bech32 five2eight input.slice(3, 52 + 3)
+          PaymentSecretTag(ByteVector view secret)
 
         case tagH if tagH == 23 =>
           val hash = Bech32 five2eight input.slice(3, len + 3)

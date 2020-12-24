@@ -42,6 +42,13 @@ class PaymentRequestSpec {
     }
 
     {
+      println("check payment secret")
+      val ref = "lnbc1u1p07xh8upp5f2nvde0gl905cd7yskx5kcuh32r6kgulauuv2nhfupw3jc0w8t3qdzqdp68gurn8ghj7mrfva58gmnfdenj6un0w4kx2ar5v5hxxmmdyq5xgetsdaekjapfcqzpgxq92fjuqsp5krsw02tl8v0lxg82yr3ua4zdeyc03jng5cucqjtarpcdtk62ptcs9qyyssqqqh664e75fcur2kmevzej0yca6xg2s2p75e8fmnh6pwy3fdex929vlektxuuptf78zt0nlz80welga28vv29fj3m6e86h6qnukm7udcp89c2d9"
+      val pr = PaymentRequest.read(ref)
+      assert(pr.paymentSecret == ByteVector.fromValidHex("b0e0e7a97f3b1ff320ea20e3ced44dc930f8ca68a63980497d1870d5db4a0af1"))
+    }
+
+    {
       println("Please make a donation of any amount using payment_hash 0001020304050607080900010203040506070809000102030405060708090102 to me @03e7156ae33b0a208d0744199163177e909e80176e55d97a2f221ede0f934dd9ad")
       val ref = "lnbc1pvjluezpp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqypqdpl2pkx2ctnv5sxxmmwwd5kgetjypeh2ursdae8g6twvus8g6rfwvs8qun0dfjkxaq8rkx3yf5tcsyz3d73gafnh3cax9rn449d9p5uxz9ezhhypd0elx87sjle52x86fux2ypatgddc6k63n7erqz25le42c4u4ecky03ylcqca784w"
       val pr = PaymentRequest.read(ref)
