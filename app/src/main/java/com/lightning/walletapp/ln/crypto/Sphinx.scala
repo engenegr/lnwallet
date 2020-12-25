@@ -277,9 +277,7 @@ object Sphinx {
     * A payment onion packet is used when offering an HTLC to a remote node.
     */
   object PaymentPacket extends OnionRoutingPacket {
-
     override val PayloadLength = 1300
-
   }
 
   /**
