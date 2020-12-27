@@ -166,7 +166,7 @@ object PaymentRequest {
   val expiryTag = ExpiryTag(seconds = 3600 * 24 + 1)
   val cltvExpiryTag = MinFinalCltvExpiryTag(LNParams.blocksPerDay * 2 - 3) // Minus 3 to account for trampoline senders
   val prefixes = Map(Block.RegtestGenesisBlock.hash -> "lnbcrt", Block.TestnetGenesisBlock.hash -> "lntb", Block.LivenetGenesisBlock.hash -> "lnbc")
-  val paymentSecretTag = PaymentSecretTag(ByteVector.empty)
+  val paymentSecretTag = PaymentSecretTag(ByteVector.view(random getBytes 32))
   def apply(chain: ByteVector, amount: Option[MilliSatoshi], paymentHash: ByteVector,
             privKey: PrivateKey, description: String, routes: PaymentRouteVec): PaymentRequest = {
 

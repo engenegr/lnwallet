@@ -683,6 +683,7 @@ sealed trait FinalPayload extends PerHopPayload with PerHopPayloadFormat { me =>
   def encode = LightningMessageCodecs.finalPerHopPayloadCodec.encode(me).require.toByteVector
   val amountMsat: Long
   val cltvExpiry: Long
+  val totalAmount: Long
   val paymentSecret: Option[ByteVector]
   val paymentPreimage: Option[ByteVector]
 }
@@ -695,8 +696,10 @@ sealed trait RelayPayload extends PerHopPayload with PerHopPayloadFormat { me =>
 }
 
 sealed trait LegacyFormat extends PerHopPayloadFormat
+
 case class FinalLegacyPayload(amountMsat: Long, cltvExpiry: Long) extends FinalPayload with LegacyFormat {
   override val paymentSecret = None
+  override val totalAmount = amountMsat
   override val paymentPreimage = None
 }
 
@@ -727,4 +730,6 @@ case class FinalTlvPayload(records: OnionTlv.Stream) extends FinalPayload {
   override val cltvExpiry = records.get[OnionTlv.OutgoingCltv].get.cltv
   override val paymentSecret = records.get[OnionTlv.PaymentData].map(_.secret)
   override val paymentPreimage = records.get[OnionTlv.KeySend].map(_.paymentPreimage)
+  override val totalAmount = amountMsat
+
 }
