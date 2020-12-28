@@ -662,7 +662,9 @@ object OnionTlv {
 
   case class PaymentData(secret: ByteVector, totalAmount: Long) extends OnionTlv
   case class KeySend(paymentPreimage: ByteVector) extends OnionTlv
-
+  case class OutgoingNodeId(nodeId: PublicKey) extends OnionTlv
+  case class InvoiceFeatures(features: ByteVector) extends OnionTlv
+  case class InvoiceRoutingInfo(extraHops: List[List[Hop]]) extends OnionTlv
 }
 
 sealed trait PerHopPayloadFormat
