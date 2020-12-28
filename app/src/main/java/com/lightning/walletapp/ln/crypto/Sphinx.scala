@@ -27,6 +27,7 @@ import fr.acinq.bitcoin.{Crypto, Protocol}
 import scodec.bits.ByteVector
 import scodec.Attempt
 
+
 object Sphinx {
   type PublicKeyVec = Vector[PublicKey]
 
@@ -305,8 +306,6 @@ object Sphinx {
     def create(sharedSecret: ByteVector, failure: FailureMessage): ByteVector = {
       val um = generateKey("um", sharedSecret)
       val packet = FailureMessageCodecs.failureOnionCodec(Hmac256(um)).encode(failure).require.toByteVector
-      println(s"um key: $um")
-      println(s"raw error packet: ${packet.toHex}")
       wrap(packet, sharedSecret)
     }
 
