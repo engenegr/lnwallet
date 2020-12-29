@@ -295,27 +295,27 @@ object LightningMessageCodecs { me =>
 
   val relayPerHopPayloadCodec: Codec[RelayPayload] =
     fallback(tlvPerHopPayloadCodec, legacyRelayPerHopPayloadCodec).narrow(f = {
-        case Left(tlvs) if tlvs.get[OnionTlv.OutgoingChannelId].isEmpty => Attempt failure MissingRequiredTlv(6)
-        case Left(tlvs) if tlvs.get[OnionTlv.AmountToForward].isEmpty => Attempt failure MissingRequiredTlv(2)
-        case Left(tlvs) if tlvs.get[OnionTlv.OutgoingCltv].isEmpty => Attempt failure MissingRequiredTlv(4)
-        case Left(tlvs) => Attempt successful RelayTlvPayload(tlvs)
-        case Right(legacy) => Attempt successful legacy
-      }, g = {
-        case legacy: RelayLegacyPayload => Right(legacy)
-        case RelayTlvPayload(tlvs) => Left(tlvs)
-      }
+      case Left(tlvs) if tlvs.get[OnionTlv.OutgoingChannelId].isEmpty => Attempt failure MissingRequiredTlv(6)
+      case Left(tlvs) if tlvs.get[OnionTlv.AmountToForward].isEmpty => Attempt failure MissingRequiredTlv(2)
+      case Left(tlvs) if tlvs.get[OnionTlv.OutgoingCltv].isEmpty => Attempt failure MissingRequiredTlv(4)
+      case Left(tlvs) => Attempt successful RelayTlvPayload(tlvs)
+      case Right(legacy) => Attempt successful legacy
+    }, g = {
+      case legacy: RelayLegacyPayload => Right(legacy)
+      case RelayTlvPayload(tlvs) => Left(tlvs)
+    }
     )
 
   val finalPerHopPayloadCodec: Codec[FinalPayload] =
     fallback(tlvPerHopPayloadCodec, legacyFinalPerHopPayloadCodec).narrow(f = {
-        case Left(tlvs) if tlvs.get[OnionTlv.AmountToForward].isEmpty => Attempt failure MissingRequiredTlv(2)
-        case Left(tlvs) if tlvs.get[OnionTlv.OutgoingCltv].isEmpty => Attempt failure MissingRequiredTlv(4)
-        case Left(tlvs) => Attempt successful FinalTlvPayload(tlvs)
-        case Right(legacy) => Attempt successful legacy
-      }, g = {
-        case legacy: FinalLegacyPayload => Right(legacy)
-        case FinalTlvPayload(tlvs) => Left(tlvs)
-      }
+      case Left(tlvs) if tlvs.get[OnionTlv.AmountToForward].isEmpty => Attempt failure MissingRequiredTlv(2)
+      case Left(tlvs) if tlvs.get[OnionTlv.OutgoingCltv].isEmpty => Attempt failure MissingRequiredTlv(4)
+      case Left(tlvs) => Attempt successful FinalTlvPayload(tlvs)
+      case Right(legacy) => Attempt successful legacy
+    }, g = {
+      case legacy: FinalLegacyPayload => Right(legacy)
+      case FinalTlvPayload(tlvs) => Left(tlvs)
+    }
     )
 
   // LN messages
@@ -659,12 +659,6 @@ object OnionTlv {
   case class OutgoingChannelId(shortChannelId: Long) extends OnionTlv
   case class AmountToForward(amountMsat: Long) extends OnionTlv
   case class OutgoingCltv(cltv: Long) extends OnionTlv
-
-  case class PaymentData(secret: ByteVector, totalAmount: Long) extends OnionTlv
-  case class KeySend(paymentPreimage: ByteVector) extends OnionTlv
-  case class OutgoingNodeId(nodeId: PublicKey) extends OnionTlv
-  case class InvoiceFeatures(features: ByteVector) extends OnionTlv
-  case class InvoiceRoutingInfo(extraHops: List[List[Hop]]) extends OnionTlv
 }
 
 sealed trait PerHopPayloadFormat
@@ -673,9 +667,6 @@ sealed trait FinalPayload extends PerHopPayload with PerHopPayloadFormat { me =>
   def encode = LightningMessageCodecs.finalPerHopPayloadCodec.encode(me).require.toByteVector
   val amountMsat: Long
   val cltvExpiry: Long
-  val totalAmount: Long
-  val paymentSecret: Option[ByteVector]
-  val paymentPreimage: Option[ByteVector]
 }
 
 sealed trait RelayPayload extends PerHopPayload with PerHopPayloadFormat { me =>
@@ -686,13 +677,7 @@ sealed trait RelayPayload extends PerHopPayload with PerHopPayloadFormat { me =>
 }
 
 sealed trait LegacyFormat extends PerHopPayloadFormat
-
-case class FinalLegacyPayload(amountMsat: Long, cltvExpiry: Long) extends FinalPayload with LegacyFormat {
-  override val paymentSecret = None
-  override val totalAmount = amountMsat
-  override val paymentPreimage = None
-}
-
+case class FinalLegacyPayload(amountMsat: Long, cltvExpiry: Long) extends FinalPayload with LegacyFormat
 case class RelayLegacyPayload(outgoingChannelId: Long, amountToForwardMsat: Long, outgoingCltv: Long) extends RelayPayload with LegacyFormat
 case class OnionRoutingPacket(version: Int, publicKey: ByteVector, payload: ByteVector, hmac: ByteVector)
 
@@ -705,8 +690,4 @@ case class RelayTlvPayload(records: OnionTlv.Stream) extends RelayPayload {
 case class FinalTlvPayload(records: OnionTlv.Stream) extends FinalPayload {
   override val amountMsat = records.get[OnionTlv.AmountToForward].get.amountMsat
   override val cltvExpiry = records.get[OnionTlv.OutgoingCltv].get.cltv
-  override val paymentSecret = records.get[OnionTlv.PaymentData].map(_.secret)
-  override val paymentPreimage = records.get[OnionTlv.KeySend].map(_.paymentPreimage)
-  override val totalAmount = amountMsat
-
 }
