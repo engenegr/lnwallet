@@ -73,12 +73,16 @@ object Features {
   val VARIABLE_LENGTH_ONION_MANDATORY = 8
   val VARIABLE_LENGTH_ONION_OPTIONAL = 9
 
+  val OPTION_PAYMENT_SECRET_MANDATORY = 14
+  val OPTION_PAYMENT_SECRET_DISABLED = 15
+
   implicit def binData2BitSet(featuresBinaryData: ByteVector): util.BitSet = util.BitSet.valueOf(featuresBinaryData.reverse.toArray)
   def dataLossProtect(bitset: util.BitSet) = bitset.get(OPTION_DATA_LOSS_PROTECT_OPTIONAL) || bitset.get(OPTION_DATA_LOSS_PROTECT_MANDATORY)
   def variableLengthOnion(bitset: util.BitSet) = bitset.get(VARIABLE_LENGTH_ONION_OPTIONAL) || bitset.get(VARIABLE_LENGTH_ONION_MANDATORY)
+  def paymentSecret(bitset: util.BitSet) = bitset.get(OPTION_PAYMENT_SECRET_MANDATORY) || bitset.get(OPTION_PAYMENT_SECRET_DISABLED)
   def isBitSet(position: Int, bitField: Byte): Boolean = bitField.&(1 << position) == (1 << position)
 
-  def isNodeSupported(bitset: util.BitSet) = areSupported(Set(OPTION_DATA_LOSS_PROTECT_MANDATORY, VARIABLE_LENGTH_ONION_MANDATORY), bitset)
+  def isNodeSupported(bitset: util.BitSet) = areSupported(Set(OPTION_DATA_LOSS_PROTECT_MANDATORY, VARIABLE_LENGTH_ONION_MANDATORY, OPTION_PAYMENT_SECRET_MANDATORY), bitset)
   def isHostedChannelSupported(bitset: util.BitSet) = areSupported(Set.empty, bitset)
 
   def areSupported(mandatoryFeatures: Set[Int], bitset: util.BitSet): Boolean = {

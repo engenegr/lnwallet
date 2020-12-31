@@ -112,14 +112,13 @@ case class UnknownTag(tag: Int5, int5s: Bytes) extends Tag {
 case class PaymentRequest(prefix: String, amount: Option[MilliSatoshi], timestamp: Long, nodeId: PublicKey, tags: Vector[Tag], signature: ByteVector) {
   require(tags.collect { case _: DescriptionTag | _: DescriptionHashTag => true }.size == 1, "There can only be one description or description hash tag")
   require(tags.collect { case _: PaymentHashTag => true }.size == 1, "There must be exactly one payment hash tag")
-  for (MilliSatoshi(sum) <- amount) require(sum > 0L, "Amount is not valid")
 
   lazy val msatOrMin = amount getOrElse MilliSatoshi(LNParams.minPaymentMsat)
   lazy val adjustedMinFinalCltvExpiry = tags.collectFirst { case MinFinalCltvExpiryTag(delta) => delta }.getOrElse(0L) + 18L
   lazy val paymentHash = tags.collectFirst { case PaymentHashTag(hash) => hash }.get
+  lazy val routingInfo = tags.collect { case r: RoutingInfoTag => r }
   lazy val paymentSecret = tags.collectFirst { case PaymentSecretTag(secret) => secret }.get
   lazy val features = tags.collectFirst { case fts: FeaturesTag => fts.bitmask }
-  lazy val routingInfo = tags.collect { case r: RoutingInfoTag => r }
 
   lazy val description = tags.collectFirst {
     case DescriptionHashTag(hash) => hash.toHex
@@ -166,11 +165,11 @@ object PaymentRequest {
   val expiryTag = ExpiryTag(seconds = 3600 * 24 + 1)
   val cltvExpiryTag = MinFinalCltvExpiryTag(LNParams.blocksPerDay * 2 - 3) // Minus 3 to account for trampoline senders
   val prefixes = Map(Block.RegtestGenesisBlock.hash -> "lnbcrt", Block.TestnetGenesisBlock.hash -> "lntb", Block.LivenetGenesisBlock.hash -> "lnbc")
-  val paymentSecretTag = PaymentSecretTag(ByteVector.view(random getBytes 32))
+  //val paymentSecretTag = PaymentSecretTag(ByteVector.view(random getBytes 32))
   def apply(chain: ByteVector, amount: Option[MilliSatoshi], paymentHash: ByteVector,
             privKey: PrivateKey, description: String, routes: PaymentRouteVec): PaymentRequest = {
 
-    val tags = Vector(DescriptionTag(description), cltvExpiryTag, PaymentHashTag(paymentHash), paymentSecretTag, expiryTag) ++ routes.map(RoutingInfoTag.apply)
+    val tags = Vector(DescriptionTag(description), cltvExpiryTag, PaymentHashTag(paymentHash), expiryTag) ++ routes.map(RoutingInfoTag.apply)
     PaymentRequest(prefixes(chain), amount, System.currentTimeMillis / 1000L, privKey.publicKey, tags, ByteVector.empty) sign privKey
   }
 

@@ -46,6 +46,7 @@ object PaymentInfo {
 
   def onChainThreshold = Scripts.weight2fee(LNParams.broadcaster.perKwSixSat, 750)
   def useRoute(route: PaymentRoute, rest: PaymentRouteVec, rd: RoutingData): FullOrEmptyRD = {
+    //require(Features.isNodeSupported(Features binData2BitSet rd.pr.features.get), "Unsupported features found, you should probably update an app")
     val firstExpiry = LNParams.broadcaster.currentHeight + rd.pr.adjustedMinFinalCltvExpiry
     val payloadVec = RelayLegacyPayload(0L, rd.firstMsat, firstExpiry) +: Vector.empty
     val start = (payloadVec, Vector.empty[PublicKey], rd.firstMsat, firstExpiry)
