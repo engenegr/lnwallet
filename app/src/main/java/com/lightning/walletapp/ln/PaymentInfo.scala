@@ -11,7 +11,7 @@ import fr.acinq.bitcoin.{MilliSatoshi, Transaction}
 import fr.acinq.bitcoin.Crypto.{PrivateKey, PublicKey}
 import com.lightning.walletapp.lnutils.JsonHttpUtils.to
 import fr.acinq.eclair.UInt64
-import scodec.bits.ByteVector
+import scodec.bits.{BitVector, ByteVector}
 import scodec.Attempt
 
 
@@ -36,7 +36,7 @@ object PaymentInfo {
   var errors = Map.empty[ByteVector, FailuresVec] withDefaultValue Vector.empty
   private[this] var replacedChans = Set.empty[Long]
 
-  def buildOnion(keys: PublicKeyVec, payloads: Vector[PerHopPayload], assoc: ByteVector): PacketAndSecrets = {
+  def buildOnion(keys: PublicKeyVec, payloads: Vector[Onion.PerHopPayload], assoc: ByteVector): PacketAndSecrets = {
     require(keys.size == payloads.size, "Count mismatch: there should be exactly as much payloads as node pubkeys")
     PaymentPacket.create(Tools.randomPrivKey, keys, for (payload <- payloads) yield payload.encode, assoc)
   }
@@ -46,14 +46,15 @@ object PaymentInfo {
 
   def onChainThreshold = Scripts.weight2fee(LNParams.broadcaster.perKwSixSat, 750)
   def useRoute(route: PaymentRoute, rest: PaymentRouteVec, rd: RoutingData): FullOrEmptyRD = {
-    //require(Features.isNodeSupported(Features binData2BitSet rd.pr.features.get), "Unsupported features found, you should probably update an app")
     val firstExpiry = LNParams.broadcaster.currentHeight + rd.pr.adjustedMinFinalCltvExpiry
-    val payloadVec = RelayLegacyPayload(0L, rd.firstMsat, firstExpiry) +: Vector.empty
+    val payloadVec = Onion.createRelayLegacyPayload(0L, rd.firstMsat, firstExpiry) +: Vector.empty
+    //val payloadVec = Onion.createRelayLegacyPayload(0L, rd.firstMsat, firstExpiry) +: Vector.empty
     val start = (payloadVec, Vector.empty[PublicKey], rd.firstMsat, firstExpiry)
 
     // Walk in reverse direction from receiver to sender and accumulate cltv deltas + fees
     val (allPayloads, nodeIds, lastMsat, lastExpiry) = route.reverse.foldLeft(start) { case (payloads, nodes, msat, expiry) \ hop =>
-      (RelayLegacyPayload(hop.shortChannelId, msat, expiry) +: payloads, hop.nodeId +: nodes, hop.fee(msat) + msat, hop.cltvExpiryDelta + expiry)
+      (Onion.createRelayLegacyPayload(hop.shortChannelId, msat, expiry) +: payloads, hop.nodeId +: nodes, hop.fee(msat) + msat, hop.cltvExpiryDelta + expiry)
+      //(Onion.createRelayPayload(hop.shortChannelId, msat, expiry, rd.pr) +: payloads, hop.nodeId +: nodes, hop.fee(msat) + msat, hop.cltvExpiryDelta + expiry)
     }
 
     val isCltvBreach = lastExpiry - LNParams.broadcaster.currentHeight > LNParams.maxCltvDelta

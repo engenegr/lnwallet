@@ -32,9 +32,9 @@ class OnionCodecSpec {
     {
       println("encode/decode fixed-size (legacy) relay per-hop payload")
       val testCases = Map(
-        RelayLegacyPayload(0, 0, 0) -> ByteVector.fromValidHex("00 0000000000000000 0000000000000000 00000000 000000000000000000000000"),
-        RelayLegacyPayload(42, 142000, 500000) -> ByteVector.fromValidHex("00 000000000000002a 0000000000022ab0 0007a120 000000000000000000000000"),
-        RelayLegacyPayload(561, 1105, 1729) -> ByteVector.fromValidHex("00 0000000000000231 0000000000000451 000006c1 000000000000000000000000")
+        Onion.RelayLegacyPayload(0, 0, 0) -> ByteVector.fromValidHex("00 0000000000000000 0000000000000000 00000000 000000000000000000000000"),
+        Onion.RelayLegacyPayload(42, 142000, 500000) -> ByteVector.fromValidHex("00 000000000000002a 0000000000022ab0 0007a120 000000000000000000000000"),
+        Onion.RelayLegacyPayload(561, 1105, 1729) -> ByteVector.fromValidHex("00 0000000000000231 0000000000000451 000006c1 000000000000000000000000")
       )
 
       for ((expected, bin) <- testCases) {
@@ -49,9 +49,9 @@ class OnionCodecSpec {
     {
       println("encode/decode fixed-size (legacy) final per-hop payload")
       val testCases = Map(
-        FinalLegacyPayload(0, 0) -> ByteVector.fromValidHex("00 0000000000000000 0000000000000000 00000000 000000000000000000000000"),
-        FinalLegacyPayload(142000, 500000) -> ByteVector.fromValidHex("00 0000000000000000 0000000000022ab0 0007a120 000000000000000000000000"),
-        FinalLegacyPayload(1105, 1729) -> ByteVector.fromValidHex("00 0000000000000000 0000000000000451 000006c1 000000000000000000000000")
+        Onion.FinalLegacyPayload(0, 0) -> ByteVector.fromValidHex("00 0000000000000000 0000000000000000 00000000 000000000000000000000000"),
+        Onion.FinalLegacyPayload(142000, 500000) -> ByteVector.fromValidHex("00 0000000000000000 0000000000022ab0 0007a120 000000000000000000000000"),
+        Onion.FinalLegacyPayload(1105, 1729) -> ByteVector.fromValidHex("00 0000000000000000 0000000000000451 000006c1 000000000000000000000000")
       )
 
       for ((expected, bin) <- testCases) {
@@ -90,12 +90,12 @@ class OnionCodecSpec {
 
       for ((expected, bin) <- testCases) {
         val decoded = relayPerHopPayloadCodec.decode(bin.bits).require.value
-        assert(decoded == RelayTlvPayload(expected))
+        assert(decoded == Onion.RelayTlvPayload(expected))
         assert(decoded.amountToForwardMsat == 561)
         assert(decoded.outgoingCltv == 42)
         assert(decoded.outgoingChannelId == 1105)
 
-        val encoded = relayPerHopPayloadCodec.encode(RelayTlvPayload(expected)).require.bytes
+        val encoded = relayPerHopPayloadCodec.encode(Onion.RelayTlvPayload(expected)).require.bytes
         assert(encoded == bin)
       }
     }
@@ -110,11 +110,11 @@ class OnionCodecSpec {
 
       for ((expected, bin) <- testCases) {
         val decoded = finalPerHopPayloadCodec.decode(bin.bits).require.value
-        assert(decoded == FinalTlvPayload(expected))
+        assert(decoded == Onion.FinalTlvPayload(expected))
         assert(decoded.amountMsat == 561)
         assert(decoded.cltvExpiry == 42)
 
-        val encoded = finalPerHopPayloadCodec.encode(FinalTlvPayload(expected)).require.bytes
+        val encoded = finalPerHopPayloadCodec.encode(Onion.FinalTlvPayload(expected)).require.bytes
         assert(encoded === bin)
       }
     }
