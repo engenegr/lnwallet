@@ -48,7 +48,7 @@ object PaymentInfo {
   def useRoute(route: PaymentRoute, rest: PaymentRouteVec, rd: RoutingData): FullOrEmptyRD = {
     val firstExpiry = LNParams.broadcaster.currentHeight + rd.pr.adjustedMinFinalCltvExpiry
     val payloadVec = Onion.createRelayLegacyPayload(0L, rd.firstMsat, firstExpiry) +: Vector.empty
-    //val payloadVec = Onion.createRelayLegacyPayload(0L, rd.firstMsat, firstExpiry) +: Vector.empty
+    //val payloadVec = Onion.createRelayPayload(0L, rd.firstMsat, firstExpiry, rd.pr) +: Vector.empty
     val start = (payloadVec, Vector.empty[PublicKey], rd.firstMsat, firstExpiry)
 
     // Walk in reverse direction from receiver to sender and accumulate cltv deltas + fees
