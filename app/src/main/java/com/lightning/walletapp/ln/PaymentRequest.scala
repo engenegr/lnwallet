@@ -117,7 +117,7 @@ case class PaymentRequest(prefix: String, amount: Option[MilliSatoshi], timestam
   lazy val adjustedMinFinalCltvExpiry = tags.collectFirst { case MinFinalCltvExpiryTag(delta) => delta }.getOrElse(0L) + 18L
   lazy val paymentHash = tags.collectFirst { case PaymentHashTag(hash) => hash }.get
   lazy val routingInfo = tags.collect { case r: RoutingInfoTag => r }
-  lazy val paymentSecret = tags.collectFirst { case PaymentSecretTag(secret) => secret }.get
+  lazy val paymentSecret = tags.collectFirst { case PaymentSecretTag(secret) => secret }.getOrElse(ByteVector.empty)
   lazy val features = tags.collectFirst { case fts: FeaturesTag => fts.bitmask }
 
   lazy val description = tags.collectFirst {

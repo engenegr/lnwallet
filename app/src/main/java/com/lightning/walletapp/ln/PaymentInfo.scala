@@ -47,14 +47,14 @@ object PaymentInfo {
   def onChainThreshold = Scripts.weight2fee(LNParams.broadcaster.perKwSixSat, 750)
   def useRoute(route: PaymentRoute, rest: PaymentRouteVec, rd: RoutingData): FullOrEmptyRD = {
     val firstExpiry = LNParams.broadcaster.currentHeight + rd.pr.adjustedMinFinalCltvExpiry
-    val payloadVec = Onion.createRelayLegacyPayload(0L, rd.firstMsat, firstExpiry) +: Vector.empty
-    //val payloadVec = Onion.createRelayPayload(0L, rd.firstMsat, firstExpiry, rd.pr) +: Vector.empty
+    //val payloadVec = Onion.createRelayLegacyPayload(0L, rd.firstMsat, firstExpiry) +: Vector.empty
+    val payloadVec = Onion.createRelayPayload(0L, rd.firstMsat, firstExpiry, rd.pr.paymentSecret) +: Vector.empty
     val start = (payloadVec, Vector.empty[PublicKey], rd.firstMsat, firstExpiry)
 
     // Walk in reverse direction from receiver to sender and accumulate cltv deltas + fees
     val (allPayloads, nodeIds, lastMsat, lastExpiry) = route.reverse.foldLeft(start) { case (payloads, nodes, msat, expiry) \ hop =>
-      (Onion.createRelayLegacyPayload(hop.shortChannelId, msat, expiry) +: payloads, hop.nodeId +: nodes, hop.fee(msat) + msat, hop.cltvExpiryDelta + expiry)
-      //(Onion.createRelayPayload(hop.shortChannelId, msat, expiry, rd.pr) +: payloads, hop.nodeId +: nodes, hop.fee(msat) + msat, hop.cltvExpiryDelta + expiry)
+      //(Onion.createRelayLegacyPayload(hop.shortChannelId, msat, expiry) +: payloads, hop.nodeId +: nodes, hop.fee(msat) + msat, hop.cltvExpiryDelta + expiry)
+      (Onion.createRelayPayload(hop.shortChannelId, msat, expiry, rd.pr.paymentSecret) +: payloads, hop.nodeId +: nodes, hop.fee(msat) + msat, hop.cltvExpiryDelta + expiry)
     }
 
     val isCltvBreach = lastExpiry - LNParams.broadcaster.currentHeight > LNParams.maxCltvDelta
