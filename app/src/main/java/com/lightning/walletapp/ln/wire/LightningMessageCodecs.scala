@@ -271,14 +271,13 @@ object LightningMessageCodecs { me =>
     (_: Int) => Attempt.successful(BitVector.empty), // we don't encode the length
     (wire: BitVector) => Attempt.successful(DecodeResult(wire.size.toInt / 408, wire)) // we infer the number of items by the size of the data
   )
-  /*
+
   private val paymentData: Codec[PaymentData] = {
     (bytes32 withContext "payment_secret") ::
       (tu64Overflow withContext "total_msat")
   }.as[PaymentData]
-  */
 
-  private val paymentData: Codec[PaymentData] = variableSizeBytesLong(varintoverflow, (bytes32 withContext "payment_secret") :: (tu64Overflow withContext "total_msat")).as[PaymentData]
+  //private val paymentData: Codec[PaymentData] = variableSizeBytesLong(varintoverflow, (bytes32 withContext "payment_secret") :: (tu64Overflow withContext "total_msat")).as[PaymentData]
   private val outgoingNodeId: Codec[OutgoingNodeId] = variableSizeBytesLong(varintoverflow, "node_id" | publicKey).as[OutgoingNodeId]
   private val invoiceFeatures: Codec[InvoiceFeatures] = variableSizeBytesLong(varintoverflow, bytes).as[InvoiceFeatures]
   private val invoiceRoutingInfo: Codec[InvoiceRoutingInfo] = variableSizeBytesLong(varintoverflow, list(listOfN(uint8, hopCodec))).as[InvoiceRoutingInfo]
